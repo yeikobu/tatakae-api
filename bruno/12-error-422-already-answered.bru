@@ -1,0 +1,22 @@
+meta {
+  name: Error 422, the request was already answered
+  type: http
+  seq: 12
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/friendships/{{friendshipId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "status": "ACCEPTED"
+  }
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq BUSINESS_RULE_VIOLATION
+}

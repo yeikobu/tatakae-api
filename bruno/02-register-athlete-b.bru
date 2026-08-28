@@ -1,0 +1,27 @@
+meta {
+  name: Register athlete B
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/users
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "kenshin",
+    "country": "cl",
+    "privacyLevel": "PRIVATE"
+  }
+}
+
+script:post-response {
+  bru.setEnvVar("userIdB", res.body.userId);
+}
+
+assert {
+  res.status: eq 201
+}

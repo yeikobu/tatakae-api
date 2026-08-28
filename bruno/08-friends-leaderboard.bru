@@ -1,0 +1,14 @@
+meta {
+  name: Friends leaderboard
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/leaderboards/PULL_UP?scope=FRIENDS&userId={{userIdA}}
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

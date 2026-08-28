@@ -1,0 +1,27 @@
+meta {
+  name: Register athlete A
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/users
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "yeikobu",
+    "country": "cl",
+    "privacyLevel": "PUBLIC"
+  }
+}
+
+script:post-response {
+  bru.setEnvVar("userIdA", res.body.userId);
+}
+
+assert {
+  res.status: eq 201
+}

@@ -1,0 +1,24 @@
+meta {
+  name: Error 400, handle uses forbidden characters
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/v1/users
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "jacob aguilar",
+    "country": "cl",
+    "privacyLevel": "PUBLIC"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq VALIDATION_ERROR
+}

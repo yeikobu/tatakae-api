@@ -1,0 +1,22 @@
+meta {
+  name: Accept the friend request
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/friendships/{{friendshipId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "status": "ACCEPTED"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq ACCEPTED
+}

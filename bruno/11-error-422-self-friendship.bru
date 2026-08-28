@@ -1,0 +1,23 @@
+meta {
+  name: Error 422, an athlete cannot befriend itself
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/v1/friendships
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "requesterId": "{{userIdA}}",
+    "addresseeId": "{{userIdA}}"
+  }
+}
+
+assert {
+  res.status: eq 422
+  res.body.code: eq BUSINESS_RULE_VIOLATION
+}

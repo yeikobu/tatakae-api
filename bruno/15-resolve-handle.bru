@@ -1,0 +1,15 @@
+meta {
+  name: Resolve a handle into its identity
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/api/v1/users?username=yeikobu
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body[0].username: eq yeikobu
+}

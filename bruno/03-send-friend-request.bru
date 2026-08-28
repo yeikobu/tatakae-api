@@ -1,0 +1,27 @@
+meta {
+  name: Send friend request
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/friendships
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "requesterId": "{{userIdA}}",
+    "addresseeId": "{{userIdB}}"
+  }
+}
+
+script:post-response {
+  bru.setEnvVar("friendshipId", res.body.id);
+}
+
+assert {
+  res.status: eq 201
+  res.body.status: eq PENDING
+}

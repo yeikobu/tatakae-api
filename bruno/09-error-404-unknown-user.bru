@@ -1,0 +1,15 @@
+meta {
+  name: Error 404, unknown identity
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/users/00000000-0000-0000-0000-000000000000
+  auth: none
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq RESOURCE_NOT_FOUND
+}

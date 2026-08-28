@@ -1,0 +1,25 @@
+meta {
+  name: Record a training session
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/training-sessions
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "userId": "{{userIdA}}",
+    "exercise": "PULL_UP",
+    "reps": 20,
+    "start": "2026-08-28T10:00:00Z",
+    "end": "2026-08-28T10:01:00Z"
+  }
+}
+
+assert {
+  res.status: eq 201
+}

@@ -1,0 +1,14 @@
+meta {
+  name: List friends of A
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/users/{{userIdA}}/friends
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

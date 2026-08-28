@@ -1,0 +1,25 @@
+meta {
+  name: Rename an athlete keeping its identity
+  type: http
+  seq: 16
+}
+
+put {
+  url: {{baseUrl}}/api/v1/users/{{userIdA}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "yeikobu_v2",
+    "country": "cl",
+    "privacyLevel": "PUBLIC"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.username: eq yeikobu_v2
+  res.body.userId: eq {{userIdA}}
+}

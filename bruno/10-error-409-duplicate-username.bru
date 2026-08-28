@@ -1,0 +1,24 @@
+meta {
+  name: Error 409, handle already taken even in upper case
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/users
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "YEIKOBU",
+    "country": "cl",
+    "privacyLevel": "PUBLIC"
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq RESOURCE_ALREADY_EXISTS
+}

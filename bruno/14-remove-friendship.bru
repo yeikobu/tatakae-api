@@ -1,0 +1,14 @@
+meta {
+  name: Remove the friendship
+  type: http
+  seq: 14
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/friendships/{{friendshipId}}
+  auth: none
+}
+
+assert {
+  res.status: eq 204
+}
