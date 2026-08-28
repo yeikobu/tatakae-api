@@ -12,7 +12,13 @@ spring:
       hibernate:
         format_sql: true
 
+management:
+  endpoint:
+    health:
+      show-details: always
+
 springdoc:
+  show-actuator: true
   api-docs:
     path: /api-docs
     enabled: true

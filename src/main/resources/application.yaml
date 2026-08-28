@@ -7,6 +7,21 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+# Only the health probe is reachable over HTTP, mapped to /healthcheck.
+# It reports DOWN when a required dependency such as PostgreSQL is unreachable,
+# so it is a real liveness signal and not a hardcoded "UP".
+management:
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health
+      path-mapping:
+        health: healthcheck
+  endpoint:
+    health:
+      show-details: never
+
 # Documentation is off unless a profile turns it on: production must not expose the contract.
 springdoc:
   api-docs:

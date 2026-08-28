@@ -148,6 +148,7 @@ Base path `/api/v1`.
 
 | Verb | Route | Success | Purpose |
 |---|---|---|---|
+| GET | `/healthcheck` | 200 | Liveness probe, reports `DOWN` when the database is unreachable |
 | POST | `/users` | 201 | Register an athlete |
 | GET | `/users` | 200 | List athletes, or resolve one handle with `?username=yeikobu` |
 | GET | `/users/{userId}` | 200 | Get one athlete |
@@ -161,6 +162,12 @@ Base path `/api/v1`.
 | GET | `/users/{userId}/friend-requests?direction=incoming\|outgoing` | 200 | List pending requests |
 | POST | `/training-sessions` | 201 | Record a counted set |
 | GET | `/leaderboards/{exercise}?scope=GLOBAL\|COUNTRY\|FRIENDS&country=&userId=` | 200 | Ranking for one exercise |
+
+`/healthcheck` is the only management endpoint mapped over HTTP, and it sits outside `/api/v1`
+because it describes the service, not the domain. It is Spring Boot Actuator underneath, so it
+actually opens a connection to PostgreSQL instead of answering a hardcoded `UP`: if the database
+goes away the probe turns `DOWN` and answers 503, which is what makes it usable by a load balancer
+or an uptime monitor. Component details are shown under `dev` and hidden everywhere else.
 
 ### Unified error contract
 
@@ -225,8 +232,8 @@ Every command below assumes the application is running on port 8080 under the `d
 ### The happy path
 
 ```bash
-# 0. Is it up? The dev profile serves the contract
-curl -i -X GET http://localhost:8080/api-docs
+# 0. Is the service alive, database included?
+curl -i -X GET http://localhost:8080/healthcheck
 ```
 
 ```bash
