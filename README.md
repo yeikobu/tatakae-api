@@ -5,7 +5,6 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2F%20Hexagonal-blue.svg)
 ![DDD](https://img.shields.io/badge/DDD-Tactical%20patterns-blue.svg)
-![Tests](https://img.shields.io/badge/Tests-225%20passing-brightgreen.svg)
 ![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)
 ![OpenAPI](https://img.shields.io/badge/OpenAPI-3.1-6ba539.svg)
 
