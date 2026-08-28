@@ -13,4 +13,5 @@ public interface FriendshipRepository {
     List<Friendship> findPendingOutgoing(String userId);
     Friendship save(Friendship friendship);
     void delete(String id);
+    void deleteAllInvolving(String userId);
 }

@@ -60,4 +60,23 @@ public class InMemorySessionRepositoryTest {
         // Assert
         assertThrows(UnsupportedOperationException.class, () -> sessions.add(session));
     }
+
+    @Test
+    public void shouldDropEverySessionOfOneAthleteAndKeepTheRest() {
+        // Arrange
+        InMemorySessionRepository repository = new InMemorySessionRepository();
+        User owner = TestUsers.user("yeikobu");
+        User other = TestUsers.user("kenshin");
+        Instant start = Instant.parse("2026-08-28T10:00:00Z");
+        Clock clock = Clock.fixed(start, ZoneOffset.UTC);
+        repository.save(new TrainingSession(owner, Exercise.PULL_UP, 20, start, start.plusSeconds(60), clock));
+        repository.save(new TrainingSession(other, Exercise.PULL_UP, 30, start, start.plusSeconds(60), clock));
+
+        // Act
+        repository.deleteAllOf(owner.getUserId());
+
+        // Assert
+        assertEquals(1, repository.getAll().size());
+        assertEquals(other, repository.getAll().get(0).getUser());
+    }
 }

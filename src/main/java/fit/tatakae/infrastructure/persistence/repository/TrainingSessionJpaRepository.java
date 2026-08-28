@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface TrainingSessionJpaRepository extends JpaRepository<TrainingSessionEntity, String> {
+    void deleteByUserId(String userId);
 }

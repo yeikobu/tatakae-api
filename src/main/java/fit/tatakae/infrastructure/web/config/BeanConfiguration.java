@@ -56,8 +56,10 @@ public class BeanConfiguration {
     }
 
     @Bean
-    public DeleteUserUseCase deleteUserUseCase(UserRepository userRepository) {
-        return new DeleteUserUseCase(userRepository);
+    public DeleteUserUseCase deleteUserUseCase(UserRepository userRepository,
+                                              FriendshipRepository friendshipRepository,
+                                              SessionRepository sessionRepository) {
+        return new DeleteUserUseCase(userRepository, friendshipRepository, sessionRepository);
     }
 
     @Bean

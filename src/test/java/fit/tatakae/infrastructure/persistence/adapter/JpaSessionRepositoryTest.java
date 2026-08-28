@@ -58,4 +58,23 @@ public class JpaSessionRepositoryTest extends PostgresIntegrationTest {
         // Act and Assert
         assertThrows(ResourceNotFoundException.class, () -> sessionRepository.save(session));
     }
+
+    // Deleting an athlete has to be able to clear its sessions first, or the foreign key blows up.
+    @Test
+    public void shouldDropEverySessionOfOneAthlete() {
+        // Arrange
+        User owner = TestUsers.user("goten", "jp", PrivacyLevel.PUBLIC);
+        User other = TestUsers.user("bra", "jp", PrivacyLevel.PUBLIC);
+        userRepository.save(owner);
+        userRepository.save(other);
+        sessionRepository.save(new TrainingSession(owner, Exercise.PULL_UP, 20, NOW, NOW.plusSeconds(60), CLOCK));
+        sessionRepository.save(new TrainingSession(other, Exercise.PULL_UP, 30, NOW, NOW.plusSeconds(60), CLOCK));
+
+        // Act
+        sessionRepository.deleteAllOf(owner.getUserId());
+
+        // Assert
+        assertTrue(sessionRepository.getAll().stream().noneMatch(s -> s.getUser().equals(owner)));
+        assertTrue(sessionRepository.getAll().stream().anyMatch(s -> s.getUser().equals(other)));
+    }
 }

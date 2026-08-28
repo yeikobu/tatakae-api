@@ -145,4 +145,23 @@ public class JpaFriendshipRepositoryTest extends PostgresIntegrationTest {
         // Assert
         assertTrue(friendshipRepository.findById(friendship.getId()).isEmpty());
     }
+
+    @Test
+    public void shouldDropEveryRelationInvolvingOneAthleteFromBothEnds() {
+        // Arrange
+        Friendship outgoing = new Friendship(TestUsers.idOf("h1"), TestUsers.idOf("h2"), CLOCK);
+        Friendship incoming = new Friendship(TestUsers.idOf("h3"), TestUsers.idOf("h1"), CLOCK);
+        Friendship unrelated = new Friendship(TestUsers.idOf("h2"), TestUsers.idOf("h3"), CLOCK);
+        friendshipRepository.save(outgoing);
+        friendshipRepository.save(incoming);
+        friendshipRepository.save(unrelated);
+
+        // Act
+        friendshipRepository.deleteAllInvolving(TestUsers.idOf("h1"));
+
+        // Assert
+        assertTrue(friendshipRepository.findById(outgoing.getId()).isEmpty());
+        assertTrue(friendshipRepository.findById(incoming.getId()).isEmpty());
+        assertTrue(friendshipRepository.findById(unrelated.getId()).isPresent());
+    }
 }

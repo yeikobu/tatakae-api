@@ -2,7 +2,7 @@
 
 Friendship, training session and leaderboard microservice for **Tatakae**, an iOS calisthenics app that counts repetitions on device with AI.
 
-> **Academic project.** Built for the Java program **Talento Ready, Desafio Latam**. Milestone 1 produced the pure domain core, Milestone 3 restructured it into layered Clean Architecture with tactical DDD, and **Milestone 4 (this delivery)** turned it into a persistent, documented Spring Boot microservice. It models what the social and leaderboard backend for Tatakae could look like; it is not the production backend of the published app.
+> **Academic project.** Built for the **Talento Ready** program by **Desafío Latam** and **Globant**. Milestone 1 produced the pure domain core, Milestone 3 restructured it into layered Clean Architecture with tactical DDD, and **Milestone 4 (this delivery)** turned it into a persistent, documented Spring Boot microservice. It models what the social and leaderboard backend for Tatakae could look like; it is not the production backend of the published app.
 
 The feature this milestone adds is the **friends CRUD**: the piece the app needs before global, local and friends leaderboards can exist.
 
@@ -68,6 +68,7 @@ fit.tatakae
 - **Identity is a value object.** `UserId` and `Username` validate in their compact constructors, so neither a malformed UUID nor an invalid handle can exist in memory. Both ends of `Friendship` are built through `UserId`, which is why a self friend request is caught even when the UUID casing differs.
 - **Behavior rich entities.** `Friendship` owns its own state machine: only a `PENDING` request can be accepted or rejected, a user cannot befriend itself, and blocking is the only transition allowed on an already accepted relation.
 - **Friendship uniqueness is a domain rule, not a database constraint.** A rejected relation may be requested again, so `FriendshipService` consults the newest relation between both users through `findBetween` instead of relying on a unique index that would forbid the retry.
+- **Deleting an athlete cascades from the use case, not from the schema.** `DeleteUserUseCase` clears the training sessions and the friendships before removing the athlete. The rule lives in the application layer where it can be read and tested, instead of hiding in an `ON DELETE CASCADE` that only the database knows about.
 - **Privacy is scope aware.** Global and local rankings only show public athletes. The friends ranking shows the whole circle, private profiles included, because that is the audience the athlete opted into.
 
 ## Endpoints
@@ -80,7 +81,7 @@ Base path `/api/v1`.
 | GET | `/users` | 200 | List athletes, or resolve one handle with `?username=yeikobu` |
 | GET | `/users/{userId}` | 200 | Get one athlete |
 | PUT | `/users/{userId}` | 200 | Update the profile, handle included |
-| DELETE | `/users/{userId}` | 204 | Delete an athlete |
+| DELETE | `/users/{userId}` | 204 | Delete an athlete, along with its sessions and friendships |
 | POST | `/friendships` | 201 | Send a friend request, body `{"requesterId":"<uuid>","addresseeId":"<uuid>"}` |
 | GET | `/friendships/{id}` | 200 | Get one friendship |
 | PATCH | `/friendships/{id}` | 200 | Answer a request, body `{"status":"ACCEPTED"}` or `{"status":"REJECTED"}` |
@@ -130,21 +131,188 @@ docker compose up -d
 ### 2. Run the application in development mode
 
 ```bash
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+./mvnw spring-boot:run
 ```
+
+`application.yaml` declares `spring.profiles.default: dev`, so this lands on the development profile with the local database and the documentation switched on. Passing `-Dspring-boot.run.profiles=dev` is equivalent and only worth typing if you already have `SPRING_PROFILES_ACTIVE` set to something else in your shell.
 
 ### 3. Read and test the contract
 
 - Swagger UI: http://localhost:8080/swagger-ui.html
 - OpenAPI JSON: http://localhost:8080/api-docs
 
-`application.yaml` declares `spring.profiles.default: dev`, so a bare `./mvnw spring-boot:run` still lands on the development profile with the local database and the documentation available. Any real deployment sets `SPRING_PROFILES_ACTIVE=prod` and loses both.
-
 Both are reachable **only** under the `dev` profile. `application.yaml` ships with `springdoc.api-docs.enabled: false` and `springdoc.swagger-ui.enabled: false`, `application-prod.yaml` keeps them off explicitly, and `OpenApiConfig` is annotated `@Profile("dev")`, so a production deployment answers 404 on both routes and exposes no attack surface.
 
 ```bash
 SPRING_PROFILES_ACTIVE=prod ./mvnw spring-boot:run
 ```
+
+## Testing it with cURL
+
+Every command below assumes the application is running on port 8080 under the `dev` profile, which is what `./mvnw spring-boot:run` gives you. Athlete identities are UUIDs minted by the server, so the walkthrough captures them into shell variables as it goes: paste the commands in order, in the same terminal, and each one feeds the next.
+
+### The happy path
+
+```bash
+# 0. Is it up? The dev profile serves the contract
+curl -i -X GET http://localhost:8080/api-docs
+```
+
+```bash
+# 1. Register two athletes and keep their identities
+USER_A=$(curl -s -X POST http://localhost:8080/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{"username": "yeikobu", "country": "cl", "privacyLevel": "PUBLIC"}' \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['userId'])")
+
+USER_B=$(curl -s -X POST http://localhost:8080/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{"username": "KENSHIN", "country": "cl", "privacyLevel": "PRIVATE"}' \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['userId'])")
+
+echo "yeikobu -> $USER_A"
+echo "kenshin -> $USER_B"
+```
+
+The second handle was sent in upper case and comes back as `kenshin`: handles are normalized on the way in.
+
+```bash
+# 2. Resolve a public handle into the athlete that owns it
+curl -i -X GET "http://localhost:8080/api/v1/users?username=YEIKOBU"
+```
+
+```bash
+# 3. Send a friend request and keep the relation id
+FRIENDSHIP=$(curl -s -X POST http://localhost:8080/api/v1/friendships \
+  -H "Content-Type: application/json" \
+  -d "{\"requesterId\": \"$USER_A\", \"addresseeId\": \"$USER_B\"}" \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])")
+
+echo "friendship -> $FRIENDSHIP"
+```
+
+```bash
+# 4. The request is waiting for kenshin
+curl -i -X GET "http://localhost:8080/api/v1/users/$USER_B/friend-requests?direction=incoming"
+
+# and yeikobu can see it is still unanswered
+curl -i -X GET "http://localhost:8080/api/v1/users/$USER_A/friend-requests?direction=outgoing"
+```
+
+```bash
+# 5. Accept it
+curl -i -X PATCH "http://localhost:8080/api/v1/friendships/$FRIENDSHIP" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "ACCEPTED"}'
+```
+
+```bash
+# 6. They are friends now
+curl -i -X GET "http://localhost:8080/api/v1/users/$USER_A/friends"
+```
+
+```bash
+# 7. Record one counted set for each athlete
+curl -s -X POST http://localhost:8080/api/v1/training-sessions \
+  -H "Content-Type: application/json" \
+  -d "{\"userId\": \"$USER_A\", \"exercise\": \"PULL_UP\", \"reps\": 20,
+       \"start\": \"2026-08-28T10:00:00Z\", \"end\": \"2026-08-28T10:01:00Z\"}"
+
+curl -s -X POST http://localhost:8080/api/v1/training-sessions \
+  -H "Content-Type: application/json" \
+  -d "{\"userId\": \"$USER_B\", \"exercise\": \"PULL_UP\", \"reps\": 30,
+       \"start\": \"2026-08-28T10:00:00Z\", \"end\": \"2026-08-28T10:01:00Z\"}"
+```
+
+```bash
+# 8. The three leaderboard scopes
+curl -i -X GET "http://localhost:8080/api/v1/leaderboards/PULL_UP?scope=GLOBAL"
+curl -i -X GET "http://localhost:8080/api/v1/leaderboards/PULL_UP?scope=COUNTRY&country=cl"
+curl -i -X GET "http://localhost:8080/api/v1/leaderboards/PULL_UP?scope=FRIENDS&userId=$USER_A"
+```
+
+`kenshin` is `PRIVATE`, so the athlete shows up in the friends ranking and disappears from the global one. Privacy hides you from strangers, not from the circle you opted into.
+
+### Renaming, the reason identities are UUIDs
+
+```bash
+# 9. kenshin becomes battousai
+curl -i -X PUT "http://localhost:8080/api/v1/users/$USER_B" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "battousai", "country": "jp", "privacyLevel": "PRIVATE"}'
+
+# 10. The friendship and the ranking follow the athlete, not the old name
+curl -i -X GET "http://localhost:8080/api/v1/users/$USER_A/friends"
+curl -i -X GET "http://localhost:8080/api/v1/leaderboards/PULL_UP?scope=FRIENDS&userId=$USER_A"
+
+# 11. And the handle it left behind is free again
+curl -i -X POST http://localhost:8080/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{"username": "kenshin", "country": "cl", "privacyLevel": "PUBLIC"}'
+```
+
+### Every error the API can answer
+
+```bash
+# 400 VALIDATION_ERROR, the handle breaks the format rules
+curl -i -X POST http://localhost:8080/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{"username": "jacob aguilar", "country": "cl", "privacyLevel": "PUBLIC"}'
+
+# 400 INVALID_REQUEST, the identity in the path is not a UUID
+curl -i -X GET http://localhost:8080/api/v1/users/yeikobu
+
+# 400 MALFORMED_REQUEST, unsupported enum value in the body
+curl -i -X POST http://localhost:8080/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{"username": "someone", "country": "cl", "privacyLevel": "SECRET"}'
+
+# 404 RESOURCE_NOT_FOUND, a well formed identity nobody owns
+curl -i -X GET http://localhost:8080/api/v1/users/00000000-0000-0000-0000-000000000000
+
+# 404 ENDPOINT_NOT_FOUND, an unmapped route never becomes a 500
+curl -i -X GET http://localhost:8080/api/v1/nothing-here
+
+# 405 METHOD_NOT_ALLOWED
+curl -i -X PUT "http://localhost:8080/api/v1/friendships/$FRIENDSHIP" \
+  -H "Content-Type: application/json" -d '{}'
+
+# 409 RESOURCE_ALREADY_EXISTS, the handle is taken, casing included
+curl -i -X POST http://localhost:8080/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{"username": "YEIKOBU", "country": "cl", "privacyLevel": "PUBLIC"}'
+
+# 422 BUSINESS_RULE_VIOLATION, an athlete cannot befriend itself
+curl -i -X POST http://localhost:8080/api/v1/friendships \
+  -H "Content-Type: application/json" \
+  -d "{\"requesterId\": \"$USER_A\", \"addresseeId\": \"$USER_A\"}"
+
+# 422 BUSINESS_RULE_VIOLATION, the request was already answered
+curl -i -X PATCH "http://localhost:8080/api/v1/friendships/$FRIENDSHIP" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "ACCEPTED"}'
+
+# 422 BUSINESS_RULE_VIOLATION, more reps than a human can do in that minute
+curl -i -X POST http://localhost:8080/api/v1/training-sessions \
+  -H "Content-Type: application/json" \
+  -d "{\"userId\": \"$USER_A\", \"exercise\": \"PULL_UP\", \"reps\": 400,
+       \"start\": \"2026-08-28T10:00:00Z\", \"end\": \"2026-08-28T10:01:00Z\"}"
+```
+
+Every one of them answers the same `ErrorResponse` shape. None of them returns a server stack trace.
+
+### Cleaning up
+
+```bash
+# Deleting an athlete also clears its sessions and friendships
+curl -i -X DELETE "http://localhost:8080/api/v1/users/$USER_A"
+curl -i -X DELETE "http://localhost:8080/api/v1/users/$USER_B"
+
+# The rankings are empty again
+curl -i -X GET "http://localhost:8080/api/v1/leaderboards/PULL_UP?scope=GLOBAL"
+```
+
+To start over from an empty database, `docker compose down -v` drops the volume and `docker compose up -d` recreates it.
 
 ## Test suite
 

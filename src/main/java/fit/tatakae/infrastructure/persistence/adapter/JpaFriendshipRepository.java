@@ -7,6 +7,7 @@ import fit.tatakae.infrastructure.persistence.entity.FriendshipEntity;
 import fit.tatakae.infrastructure.persistence.mapper.FriendshipMapper;
 import fit.tatakae.infrastructure.persistence.repository.FriendshipJpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.Comparator;
@@ -74,6 +75,12 @@ public class JpaFriendshipRepository implements FriendshipRepository {
     @Override
     public void delete(String id) {
         friendshipJpaRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public void deleteAllInvolving(String userId) {
+        friendshipJpaRepository.deleteByRequesterIdOrAddresseeId(userId, userId);
     }
 
     private Friendship toDomain(FriendshipEntity entity) {

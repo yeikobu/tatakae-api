@@ -8,6 +8,7 @@ import fit.tatakae.infrastructure.persistence.mapper.TrainingSessionMapper;
 import fit.tatakae.infrastructure.persistence.repository.TrainingSessionJpaRepository;
 import fit.tatakae.infrastructure.persistence.repository.UserJpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.List;
@@ -39,5 +40,11 @@ public class JpaSessionRepository implements SessionRepository {
         UserEntity user = userJpaRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User " + userId + " was not found"));
         sessionJpaRepository.save(TrainingSessionMapper.toEntity(session, user));
+    }
+
+    @Override
+    @Transactional
+    public void deleteAllOf(String userId) {
+        sessionJpaRepository.deleteByUserId(userId);
     }
 }

@@ -18,6 +18,8 @@ public interface FriendshipJpaRepository extends JpaRepository<FriendshipEntity,
 
     List<FriendshipEntity> findByStatusAndAddresseeId(FriendshipStatus status, String addresseeId);
 
+    void deleteByRequesterIdOrAddresseeId(String requesterId, String addresseeId);
+
     List<FriendshipEntity> findByStatusAndRequesterIdOrStatusAndAddresseeId(
             FriendshipStatus requesterStatus, String requesterId,
             FriendshipStatus addresseeStatus, String addresseeId);

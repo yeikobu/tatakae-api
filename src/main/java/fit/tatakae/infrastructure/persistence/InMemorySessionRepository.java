@@ -18,4 +18,9 @@ public class InMemorySessionRepository implements SessionRepository {
     public void save(TrainingSession session) {
         sessions.add(session);
     }
+
+    @Override
+    public void deleteAllOf(String userId) {
+        sessions.removeIf(session -> session.getUser().getUserId().equals(userId));
+    }
 }
