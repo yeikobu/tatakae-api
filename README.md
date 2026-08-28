@@ -344,3 +344,12 @@ Coverage report: `target/site/jacoco/index.html`.
 ## Contract testing collection
 
 `bruno/` holds a [Bruno](https://www.usebruno.com) collection that walks the whole friends flow end to end (register two athletes, send the request, accept it, list friends, remove it) plus one request per error code the API returns. Open the folder as a collection in Bruno and run it against `http://localhost:8080`.
+
+## Security
+
+Found a vulnerability? Please report it privately, following [SECURITY.md](SECURITY.md),
+instead of opening a public issue.
+
+## License
+
+Released under the [Apache License 2.0](LICENSE).
