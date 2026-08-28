@@ -1,5 +1,14 @@
 # Tatakae API
 
+![Java](https://img.shields.io/badge/Java-21-orange.svg)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-brightgreen.svg)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue.svg)
+![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2F%20Hexagonal-blue.svg)
+![DDD](https://img.shields.io/badge/DDD-Tactical%20patterns-blue.svg)
+![Tests](https://img.shields.io/badge/Tests-225%20passing-brightgreen.svg)
+![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)
+![OpenAPI](https://img.shields.io/badge/OpenAPI-3.1-6ba539.svg)
+
 Friendship, training session and leaderboard microservice for **Tatakae**, an iOS calisthenics app that counts repetitions on device with AI.
 
 > **Academic project.** Built for the **Talento Ready** program by **Desafío Latam** and **Globant**. Milestone 1 produced the pure domain core, Milestone 3 restructured it into layered Clean Architecture with tactical DDD, and **Milestone 4 (this delivery)** turned it into a persistent, documented Spring Boot microservice. It models what the social and leaderboard backend for Tatakae could look like; it is not the production backend of the published app.
