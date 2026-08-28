@@ -79,6 +79,69 @@ fit.tatakae
 - **Deleting an athlete cascades from the use case, not from the schema.** `DeleteUserUseCase` clears the training sessions and the friendships before removing the athlete. The rule lives in the application layer where it can be read and tested, instead of hiding in an `ON DELETE CASCADE` that only the database knows about.
 - **Privacy is scope aware.** Global and local rankings only show public athletes. The friends ranking shows the whole circle, private profiles included, because that is the audience the athlete opted into.
 
+## Relational database model and table references
+
+Two relationships shape the schema. **One athlete records N training sessions (1:N)**, and
+**athletes relate to each other through friendships**, a self referencing N:N where every row
+also carries the state of the request. Identities are UUIDs stored as `varchar(36)`, and the
+handle lives in its own unique column so it can change without touching anything that points
+at the athlete.
+
+```mermaid
+erDiagram
+    USERS ||--o{ TRAINING_SESSIONS : "1 athlete records N sets"
+    USERS ||--o{ FRIENDSHIPS : "sends N requests"
+    USERS ||--o{ FRIENDSHIPS : "receives N requests"
+
+    USERS {
+        string id PK "varchar(36), server generated UUID, immutable"
+        string username UK "varchar(30), public handle, lower case, can change"
+        string country "ISO code used by the local leaderboard"
+        string privacy_level "PUBLIC or PRIVATE, checked by the database"
+    }
+
+    FRIENDSHIPS {
+        string id PK "UUID of the relation itself"
+        string requester_id FK "athlete that sent the request, references users.id"
+        string addressee_id FK "athlete that received it, references users.id"
+        string status "PENDING, ACCEPTED, REJECTED or BLOCKED, checked by the database"
+        timestamptz created_at "when the request was sent"
+        timestamptz responded_at "when it was answered, null while pending"
+    }
+
+    TRAINING_SESSIONS {
+        string id PK "UUID of the set"
+        string user_id FK "athlete that trained, references users.id"
+        string exercise "PUSH_UP, PIKE_PUSH_UP, PULL_UP, DIP or SQUAT, checked by the database"
+        int reps "repetitions counted on device"
+        timestamptz started_at "start of the set"
+        timestamptz ended_at "end of the set, always after the start"
+    }
+```
+
+### Table references and foreign keys
+
+The three enum columns are guarded by `CHECK` constraints that Hibernate derives from the Java
+enums, so an invalid `status`, `privacy_level` or `exercise` cannot reach the table even through
+raw SQL.
+
+Referential integrity is enforced in two different places, on purpose:
+
+1. `training_sessions.user_id` to `users.id` is a **real foreign key**. The JPA entity maps the
+   athlete as `@ManyToOne` with `@JoinColumn(name = "user_id", nullable = false)`, so the database
+   itself refuses an orphan session. This is what makes `DeleteUserUseCase` clear the sessions
+   before removing the athlete.
+2. `friendships.requester_id` and `friendships.addressee_id` hold `users.id` values but carry
+   **no database level foreign key**. Both ends are stored as plain identifiers rather than
+   `@ManyToOne` associations, because the domain models a friendship as a relation between two
+   identities, not as an object graph to be traversed. Existence is checked by
+   `SendFriendRequestUseCase` before the row is written, and both columns are indexed
+   (`idx_friendship_requester`, `idx_friendship_addressee`) so the lookups stay cheap.
+
+That second decision is a trade off worth stating plainly: it keeps the aggregate boundaries clean
+and the queries simple, at the cost of trusting the application layer for integrity that the
+database could enforce on its own.
+
 ## Endpoints
 
 Base path `/api/v1`.
