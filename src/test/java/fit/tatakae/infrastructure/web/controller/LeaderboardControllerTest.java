@@ -39,6 +39,18 @@ public class LeaderboardControllerTest {
     }
 
     @Test
+    public void shouldAllowTheViteDevOrigin() throws Exception {
+        // Arrange
+        when(getLeaderboardUseCase.executeGlobal(Exercise.PULL_UP)).thenReturn(List.of());
+
+        // Act and Assert
+        mockMvc.perform(get("/api/v1/leaderboards/PULL_UP")
+                        .header("Origin", "http://localhost:5173"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+    }
+
+    @Test
     public void shouldReturnTheGlobalRankingWithItsPositions() throws Exception {
         // Arrange
         when(getLeaderboardUseCase.executeGlobal(Exercise.PULL_UP))

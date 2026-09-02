@@ -16,6 +16,8 @@ import java.util.stream.IntStream;
 
 @RestController
 @RequestMapping("/api/v1/leaderboards")
+// First call the SPA makes. If this origin is missing, the console stays red and the ranking never paints.
+@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173"})
 @Tag(name = "Leaderboards", description = "Global, local and friends rankings per exercise")
 public class LeaderboardController {
 

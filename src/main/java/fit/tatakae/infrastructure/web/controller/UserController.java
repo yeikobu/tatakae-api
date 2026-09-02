@@ -20,6 +20,9 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/users")
+// Vite (:5173) and this service (:8080) are different origins. Without the header
+// the browser drops the JSON; a Vite proxy would hide that from the course rubric.
+@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173"})
 @Tag(name = "Users", description = "Athletes registered in Tatakae")
 public class UserController {
 

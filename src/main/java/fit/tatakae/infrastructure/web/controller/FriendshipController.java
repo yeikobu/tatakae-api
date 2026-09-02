@@ -20,6 +20,8 @@ import java.net.URI;
 
 @RestController
 @RequestMapping("/api/v1/friendships")
+// PATCH with JSON is a CORS preflight. Naming the Vite origin is what lets the browser send it.
+@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173"})
 @Tag(name = "Friendships", description = "Friend requests and friendships between athletes")
 public class FriendshipController {
 

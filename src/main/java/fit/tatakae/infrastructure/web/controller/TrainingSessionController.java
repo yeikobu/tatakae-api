@@ -18,6 +18,7 @@ import java.time.Clock;
 
 @RestController
 @RequestMapping("/api/v1/training-sessions")
+@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173"})
 @Tag(name = "Training sessions", description = "Sets counted by the on device rep detector")
 public class TrainingSessionController {
 
