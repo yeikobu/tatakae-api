@@ -1,8 +1,19 @@
 HELP.md
 target/
+*.class
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+
+### Local secrets — never commit credentials ###
+.env
+.env.*
+!.env.example
+
+# Local overlays with real production passwords. The committed
+# application-prod.yaml only references DB_USER / DB_PASSWORD.
+application-prod.local.yml
+application-prod.local.yaml
 
 ### macOS ###
 # General
