@@ -8,27 +8,29 @@ public class User {
     private final Username username;
     private final String country;
     private final PrivacyLevel privacyLevel;
+    private final Gender gender;
 
     // Reconstitution constructor: used when the athlete identity already exists (e.g. loaded from a repository).
-    public User(String userId, String username, String country, PrivacyLevel privacyLevel) {
-        this(UserId.of(userId), new Username(username), country, privacyLevel);
+    public User(String userId, String username, String country, PrivacyLevel privacyLevel, Gender gender) {
+        this(UserId.of(userId), new Username(username), country, privacyLevel, gender);
     }
 
-    private User(UserId userId, Username username, String country, PrivacyLevel privacyLevel) {
+    private User(UserId userId, Username username, String country, PrivacyLevel privacyLevel, Gender gender) {
         this.userId = userId;
         this.username = username;
         this.country = country;
         this.privacyLevel = privacyLevel;
+        this.gender = gender;
     }
 
     // A brand new athlete: the identity is minted here, never accepted from the outside.
-    public static User register(String username, String country, PrivacyLevel privacyLevel) {
-        return new User(UserId.generate(), new Username(username), country, privacyLevel);
+    public static User register(String username, String country, PrivacyLevel privacyLevel, Gender gender) {
+        return new User(UserId.generate(), new Username(username), country, privacyLevel, gender);
     }
 
     // Profile changes, handle included, never touch the identity.
-    public User updatedTo(String username, String country, PrivacyLevel privacyLevel) {
-        return new User(this.userId, new Username(username), country, privacyLevel);
+    public User updatedTo(String username, String country, PrivacyLevel privacyLevel, Gender gender) {
+        return new User(this.userId, new Username(username), country, privacyLevel, gender);
     }
 
     public String getUserId() {
@@ -47,12 +49,20 @@ public class User {
         return this.privacyLevel;
     }
 
+    public Gender getGender() {
+        return this.gender;
+    }
+
     public boolean isPublic() {
         return this.privacyLevel == PrivacyLevel.PUBLIC;
     }
 
     public boolean isFromCountry(String otherCountry) {
         return this.country.equals(otherCountry);
+    }
+
+    public boolean hasGender(Gender otherGender) {
+        return this.gender == otherGender;
     }
 
     public boolean hasUsername(String otherUsername) {

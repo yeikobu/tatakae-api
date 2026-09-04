@@ -1,5 +1,6 @@
 package fit.tatakae.infrastructure.web.dto;
 
+import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.PrivacyLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -23,5 +24,9 @@ public record CreateUserRequest(
 
         @Schema(description = "Whether the athlete shows up on public leaderboards", example = "PUBLIC")
         @NotNull(message = "privacyLevel is required")
-        PrivacyLevel privacyLevel) {
+        PrivacyLevel privacyLevel,
+
+        @Schema(description = "Category used by men and women leaderboards", example = "MALE")
+        @NotNull(message = "gender is required")
+        Gender gender) {
 }

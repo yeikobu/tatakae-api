@@ -21,7 +21,7 @@ public class PersistenceMapperTest {
     @Test
     public void shouldMapAUserBackAndForthWithoutLosingData() {
         // Arrange
-        User user = TestUsers.user("yeikobu", "cl", PrivacyLevel.PUBLIC);
+        User user = TestUsers.user("yeikobu", "cl", PrivacyLevel.PUBLIC, Gender.FEMALE);
 
         // Act
         UserEntity entity = UserMapper.toEntity(user);
@@ -31,8 +31,10 @@ public class PersistenceMapperTest {
         assertEquals("yeikobu", entity.getUsername());
         assertEquals("cl", entity.getCountry());
         assertEquals(PrivacyLevel.PUBLIC, entity.getPrivacyLevel());
+        assertEquals(Gender.FEMALE, entity.getGender());
         assertEquals(user, roundTrip);
         assertEquals(user.getUsername(), roundTrip.getUsername());
+        assertEquals(Gender.FEMALE, roundTrip.getGender());
     }
 
     @Test

@@ -2,6 +2,7 @@ package fit.tatakae.domain.service;
 
 import fit.tatakae.TestUsers;
 import fit.tatakae.domain.entity.Exercise;
+import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.PrivacyLevel;
 import fit.tatakae.domain.entity.TrainingSession;
 import fit.tatakae.domain.entity.User;
@@ -392,6 +393,121 @@ public class LeaderboardServiceTest {
         //Assert
         assertEquals(1, ranking.size());
         assertEquals(pullUpSession, ranking.get(0));
+        Mockito.verify(sessionRepository, Mockito.times(1)).getAll();
+    }
+
+    @Test
+    public void shouldKeepTheMixedGlobalRankingWhenNoGenderIsAsked() {
+        //Arrange
+        User man = TestUsers.user("user_1", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
+        User woman = TestUsers.user("user_2", "us", PrivacyLevel.PUBLIC, Gender.FEMALE);
+
+        Instant dateExecuted = Instant.parse("2026-07-22T10:00:00Z");
+        Instant start = dateExecuted;
+        Instant end = start.plusSeconds(60);
+        Clock clock = Clock.fixed(dateExecuted, ZoneOffset.UTC);
+
+        TrainingSession manSession = new TrainingSession(man, Exercise.PULL_UP, 20, start, end, clock);
+        TrainingSession womanSession = new TrainingSession(woman, Exercise.PULL_UP, 35, start, end, clock);
+
+        when(sessionRepository.getAll()).thenReturn(List.of(manSession, womanSession));
+
+        //Act
+        List<TrainingSession> ranking = leaderboardService.getGlobalRanking(Exercise.PULL_UP, null);
+
+        //Assert
+        assertEquals(2, ranking.size());
+        assertEquals(womanSession, ranking.get(0));
+        assertEquals(manSession, ranking.get(1));
+    }
+
+    @Test
+    public void shouldReturnOnlyWomenInTheGlobalRankingWhenFilteredByFemale() {
+        //Arrange
+        User man = TestUsers.user("user_1", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
+        User woman = TestUsers.user("user_2", "us", PrivacyLevel.PUBLIC, Gender.FEMALE);
+        User anotherWoman = TestUsers.user("user_3", "br", PrivacyLevel.PUBLIC, Gender.FEMALE);
+
+        Instant dateExecuted = Instant.parse("2026-07-22T10:00:00Z");
+        Instant start = dateExecuted;
+        Instant end = start.plusSeconds(60);
+        Clock clock = Clock.fixed(dateExecuted, ZoneOffset.UTC);
+
+        TrainingSession manSession = new TrainingSession(man, Exercise.PULL_UP, 50, start, end, clock);
+        TrainingSession womanSession = new TrainingSession(woman, Exercise.PULL_UP, 27, start, end, clock);
+        TrainingSession anotherWomanSession = new TrainingSession(anotherWoman, Exercise.PULL_UP, 35, start, end, clock);
+
+        when(sessionRepository.getAll()).thenReturn(List.of(manSession, womanSession, anotherWomanSession));
+
+        //Act
+        List<TrainingSession> ranking = leaderboardService.getGlobalRanking(Exercise.PULL_UP, Gender.FEMALE);
+
+        //Assert
+        assertEquals(2, ranking.size());
+        assertEquals(anotherWomanSession, ranking.get(0));
+        assertEquals(womanSession, ranking.get(1));
+        Mockito.verify(sessionRepository, Mockito.times(1)).getAll();
+    }
+
+    @Test
+    public void shouldCombineCountryAndFemaleFiltersAndKeepRequiringPublicAthletes() {
+        //Arrange
+        User chileanWoman = TestUsers.user("user_1", "cl", PrivacyLevel.PUBLIC, Gender.FEMALE);
+        User chileanMan = TestUsers.user("user_2", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
+        User americanWoman = TestUsers.user("user_3", "us", PrivacyLevel.PUBLIC, Gender.FEMALE);
+        User privateChileanWoman = TestUsers.user("user_4", "cl", PrivacyLevel.PRIVATE, Gender.FEMALE);
+
+        Instant dateExecuted = Instant.parse("2026-07-22T10:00:00Z");
+        Instant start = dateExecuted;
+        Instant end = start.plusSeconds(60);
+        Clock clock = Clock.fixed(dateExecuted, ZoneOffset.UTC);
+
+        TrainingSession chileanWomanSession = new TrainingSession(chileanWoman, Exercise.PULL_UP, 20, start, end, clock);
+        TrainingSession chileanManSession = new TrainingSession(chileanMan, Exercise.PULL_UP, 40, start, end, clock);
+        TrainingSession americanWomanSession = new TrainingSession(americanWoman, Exercise.PULL_UP, 45, start, end, clock);
+        TrainingSession privateSession = new TrainingSession(privateChileanWoman, Exercise.PULL_UP, 60, start, end, clock);
+
+        when(sessionRepository.getAll())
+                .thenReturn(List.of(chileanWomanSession, chileanManSession, americanWomanSession, privateSession));
+
+        //Act
+        List<TrainingSession> ranking = leaderboardService.getLocalRanking(Exercise.PULL_UP, "cl", Gender.FEMALE);
+
+        //Assert
+        assertEquals(1, ranking.size());
+        assertEquals(chileanWomanSession, ranking.get(0));
+        Mockito.verify(sessionRepository, Mockito.times(1)).getAll();
+    }
+
+    @Test
+    public void shouldKeepPrivateFriendsWhenFilteringTheFriendsRankingByMale() {
+        //Arrange
+        User user = TestUsers.user("user_1", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
+        User maleFriend = TestUsers.user("user_2", "cl", PrivacyLevel.PRIVATE, Gender.MALE);
+        User femaleFriend = TestUsers.user("user_3", "cl", PrivacyLevel.PUBLIC, Gender.FEMALE);
+
+        Instant dateExecuted = Instant.parse("2026-07-22T10:00:00Z");
+        Instant start = dateExecuted;
+        Instant end = start.plusSeconds(60);
+        Clock clock = Clock.fixed(dateExecuted, ZoneOffset.UTC);
+
+        TrainingSession userSession = new TrainingSession(user, Exercise.PULL_UP, 20, start, end, clock);
+        TrainingSession maleFriendSession = new TrainingSession(maleFriend, Exercise.PULL_UP, 35, start, end, clock);
+        TrainingSession femaleFriendSession = new TrainingSession(femaleFriend, Exercise.PULL_UP, 50, start, end, clock);
+
+        when(sessionRepository.getAll()).thenReturn(List.of(userSession, maleFriendSession, femaleFriendSession));
+
+        //Act
+        List<TrainingSession> ranking = leaderboardService.getFriendsRanking(
+                Exercise.PULL_UP,
+                TestUsers.idOf("user_1"),
+                Set.of(TestUsers.idOf("user_2"), TestUsers.idOf("user_3")),
+                Gender.MALE);
+
+        //Assert
+        assertEquals(2, ranking.size());
+        assertEquals(maleFriendSession, ranking.get(0));
+        assertEquals(userSession, ranking.get(1));
         Mockito.verify(sessionRepository, Mockito.times(1)).getAll();
     }
 }

@@ -1,6 +1,7 @@
 package fit.tatakae.infrastructure.persistence.adapter;
 
 import fit.tatakae.TestUsers;
+import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.PrivacyLevel;
 import fit.tatakae.domain.entity.User;
 import org.junit.jupiter.api.Test;
@@ -25,7 +26,7 @@ public class JpaUserRepositoryTest extends PostgresIntegrationTest {
     @Test
     public void shouldStoreAndReadBackAUser() {
         // Arrange
-        User user = TestUsers.user("yeikobu", "cl", PrivacyLevel.PUBLIC);
+        User user = TestUsers.user("yeikobu", "cl", PrivacyLevel.PUBLIC, Gender.FEMALE);
 
         // Act
         userRepository.save(user);
@@ -36,6 +37,7 @@ public class JpaUserRepositoryTest extends PostgresIntegrationTest {
         assertEquals("yeikobu", stored.get().getUsername());
         assertEquals("cl", stored.get().getCountry());
         assertEquals(PrivacyLevel.PUBLIC, stored.get().getPrivacyLevel());
+        assertEquals(Gender.FEMALE, stored.get().getGender());
     }
 
     // The handle is the primary key, so a lookup with different casing still lands on the stored row.
@@ -128,7 +130,7 @@ public class JpaUserRepositoryTest extends PostgresIntegrationTest {
         userRepository.save(user);
 
         // Act
-        userRepository.save(user.updatedTo("mirai_trunks", "cl", PrivacyLevel.PRIVATE));
+        userRepository.save(user.updatedTo("mirai_trunks", "cl", PrivacyLevel.PRIVATE, user.getGender()));
 
         // Assert
         User stored = userRepository.findById(user.getUserId()).orElseThrow();

@@ -1,5 +1,6 @@
 package fit.tatakae.application.usecase;
 
+import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.PrivacyLevel;
 import fit.tatakae.domain.entity.User;
 import fit.tatakae.domain.exception.DuplicateUserException;
@@ -16,7 +17,7 @@ public class UpdateUserUseCase {
     }
 
     // Renaming is allowed precisely because the identity is a UUID: friendships and sessions keep pointing here.
-    public User execute(String userId, String username, String country, PrivacyLevel privacyLevel) {
+    public User execute(String userId, String username, String country, PrivacyLevel privacyLevel, Gender gender) {
         String identity = UserId.of(userId).asString();
         String handle = Username.normalize(username);
 
@@ -30,6 +31,6 @@ public class UpdateUserUseCase {
             throw new DuplicateUserException("Username " + handle + " is already taken");
         }
 
-        return userRepository.save(stored.updatedTo(handle, country, privacyLevel));
+        return userRepository.save(stored.updatedTo(handle, country, privacyLevel, gender));
     }
 }

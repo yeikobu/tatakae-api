@@ -62,7 +62,7 @@ public class UserController {
     })
     public ResponseEntity<UserResponse> register(@Valid @RequestBody CreateUserRequest request) {
         UserResponse body = UserResponse.from(registerUserUseCase.execute(
-                request.username(), request.country(), request.privacyLevel()));
+                request.username(), request.country(), request.privacyLevel(), request.gender()));
         return ResponseEntity.created(URI.create("/api/v1/users/" + body.userId())).body(body);
     }
 
@@ -101,7 +101,7 @@ public class UserController {
     })
     public UserResponse update(@PathVariable String userId, @Valid @RequestBody UpdateUserRequest request) {
         return UserResponse.from(updateUserUseCase.execute(
-                userId, request.username(), request.country(), request.privacyLevel()));
+                userId, request.username(), request.country(), request.privacyLevel(), request.gender()));
     }
 
     @DeleteMapping("/{userId}")

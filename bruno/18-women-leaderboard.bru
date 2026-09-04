@@ -1,0 +1,14 @@
+meta {
+  name: Women leaderboard
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/api/v1/leaderboards/PULL_UP?scope=GLOBAL&gender=FEMALE
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

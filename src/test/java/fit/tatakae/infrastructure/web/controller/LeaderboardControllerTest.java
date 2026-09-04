@@ -3,6 +3,7 @@ package fit.tatakae.infrastructure.web.controller;
 import fit.tatakae.TestUsers;
 import fit.tatakae.application.usecase.GetLeaderboardUseCase;
 import fit.tatakae.domain.entity.Exercise;
+import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.PrivacyLevel;
 import fit.tatakae.domain.entity.TrainingSession;
 import fit.tatakae.domain.entity.User;
@@ -41,7 +42,7 @@ public class LeaderboardControllerTest {
     @Test
     public void shouldAllowTheViteDevOrigin() throws Exception {
         // Arrange
-        when(getLeaderboardUseCase.executeGlobal(Exercise.PULL_UP)).thenReturn(List.of());
+        when(getLeaderboardUseCase.executeGlobal(Exercise.PULL_UP, null)).thenReturn(List.of());
 
         // Act and Assert
         mockMvc.perform(get("/api/v1/leaderboards/PULL_UP")
@@ -53,7 +54,7 @@ public class LeaderboardControllerTest {
     @Test
     public void shouldReturnTheGlobalRankingWithItsPositions() throws Exception {
         // Arrange
-        when(getLeaderboardUseCase.executeGlobal(Exercise.PULL_UP))
+        when(getLeaderboardUseCase.executeGlobal(Exercise.PULL_UP, null))
                 .thenReturn(List.of(sessionOf("second", 30), sessionOf("first", 20)));
 
         // Act and Assert
@@ -61,13 +62,26 @@ public class LeaderboardControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].position").value(1))
                 .andExpect(jsonPath("$[0].username").value("second"))
+                .andExpect(jsonPath("$[0].gender").value("MALE"))
                 .andExpect(jsonPath("$[1].position").value(2));
+    }
+
+    @Test
+    public void shouldForwardTheFemaleCategoryToTheGlobalRanking() throws Exception {
+        // Arrange
+        when(getLeaderboardUseCase.executeGlobal(Exercise.PULL_UP, Gender.FEMALE))
+                .thenReturn(List.of(sessionOf("first", 20)));
+
+        // Act and Assert
+        mockMvc.perform(get("/api/v1/leaderboards/PULL_UP").param("gender", "FEMALE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].username").value("first"));
     }
 
     @Test
     public void shouldReturnTheCountryRanking() throws Exception {
         // Arrange
-        when(getLeaderboardUseCase.executeByCountry(Exercise.PULL_UP, "cl"))
+        when(getLeaderboardUseCase.executeByCountry(Exercise.PULL_UP, "cl", null))
                 .thenReturn(List.of(sessionOf("first", 20)));
 
         // Act and Assert
@@ -79,7 +93,7 @@ public class LeaderboardControllerTest {
     @Test
     public void shouldReturnTheFriendsRanking() throws Exception {
         // Arrange
-        when(getLeaderboardUseCase.executeByFriends(Exercise.PULL_UP, TestUsers.idOf("first")))
+        when(getLeaderboardUseCase.executeByFriends(Exercise.PULL_UP, TestUsers.idOf("first"), null))
                 .thenReturn(List.of(sessionOf("first", 20)));
 
         // Act and Assert
@@ -109,6 +123,14 @@ public class LeaderboardControllerTest {
     public void shouldReturnBadRequestWhenTheScopeIsUnknown() throws Exception {
         // Act and Assert
         mockMvc.perform(get("/api/v1/leaderboards/PULL_UP").param("scope", "galaxy"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
+    public void shouldReturnBadRequestWhenTheGenderIsUnknown() throws Exception {
+        // Act and Assert
+        mockMvc.perform(get("/api/v1/leaderboards/PULL_UP").param("gender", "ALIEN"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }

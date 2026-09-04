@@ -41,7 +41,7 @@ An athlete has a **`userId`**, a server generated UUID, and a **`username`**, th
 fit.tatakae
 ├── TatakaeApiApplication.java
 ├── domain                    <-- Zero frameworks (pure Java)
-│   ├── entity                  User, Friendship, FriendshipStatus, TrainingSession, Exercise, PrivacyLevel
+│   ├── entity                  User, Friendship, FriendshipStatus, TrainingSession, Exercise, PrivacyLevel, Gender
 │   ├── valueobject             UserId, Username, RepsCount, SessionTimeframe (records, self validating)
 │   ├── exception               InvalidUserException, DuplicateUserException, InvalidFriendshipException,
 │   │                           SelfFriendshipException, DuplicateFriendshipException,
@@ -78,6 +78,7 @@ fit.tatakae
 - **Friendship uniqueness is a domain rule, not a database constraint.** A rejected relation may be requested again, so `FriendshipService` consults the newest relation between both users through `findBetween` instead of relying on a unique index that would forbid the retry.
 - **Deleting an athlete cascades from the use case, not from the schema.** `DeleteUserUseCase` clears the training sessions and the friendships before removing the athlete. The rule lives in the application layer where it can be read and tested, instead of hiding in an `ON DELETE CASCADE` that only the database knows about.
 - **Privacy is scope aware.** Global and local rankings only show public athletes. The friends ranking shows the whole circle, private profiles included, because that is the audience the athlete opted into.
+- **Gender is a category, not a fourth scope.** Every athlete is `MALE` or `FEMALE`. `GET /leaderboards/{exercise}?gender=FEMALE` keeps the same GLOBAL, COUNTRY or FRIENDS ranking and drops the other category. Omit the parameter and the board stays mixed. Athletes registered before this field existed are backfilled as `MALE` so `ddl-auto: update` can add the column without wiping the volume.
 
 ## Relational database model and table references
 
@@ -98,6 +99,7 @@ erDiagram
         string username UK "varchar(30), public handle, lower case, can change"
         string country "ISO code used by the local leaderboard"
         string privacy_level "PUBLIC or PRIVATE, checked by the database"
+        string gender "MALE or FEMALE, checked by the database"
     }
 
     FRIENDSHIPS {
@@ -121,8 +123,8 @@ erDiagram
 
 ### Table references and foreign keys
 
-The three enum columns are guarded by `CHECK` constraints that Hibernate derives from the Java
-enums, so an invalid `status`, `privacy_level` or `exercise` cannot reach the table even through
+The four enum columns are guarded by `CHECK` constraints that Hibernate derives from the Java
+enums, so an invalid `status`, `privacy_level`, `exercise` or `gender` cannot reach the table even through
 raw SQL.
 
 Referential integrity is enforced in two different places, on purpose:
@@ -161,7 +163,7 @@ Base path `/api/v1`.
 | GET | `/users/{userId}/friends` | 200 | List accepted friends |
 | GET | `/users/{userId}/friend-requests?direction=incoming\|outgoing` | 200 | List pending requests |
 | POST | `/training-sessions` | 201 | Record a counted set |
-| GET | `/leaderboards/{exercise}?scope=GLOBAL\|COUNTRY\|FRIENDS&country=&userId=` | 200 | Ranking for one exercise |
+| GET | `/leaderboards/{exercise}?scope=GLOBAL\|COUNTRY\|FRIENDS&country=&userId=&gender=` | 200 | Ranking for one exercise |
 
 `/healthcheck` is the only management endpoint mapped over HTTP, and it sits outside `/api/v1`
 because it describes the service, not the domain. It is Spring Boot Actuator underneath, so it
@@ -240,12 +242,12 @@ curl -i -X GET http://localhost:8080/healthcheck
 # 1. Register two athletes and keep their identities
 USER_A=$(curl -s -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
-  -d '{"username": "yeikobu", "country": "cl", "privacyLevel": "PUBLIC"}' \
+  -d '{"username": "yeikobu", "country": "cl", "privacyLevel": "PUBLIC", "gender": "MALE"}' \
   | python3 -c "import sys,json;print(json.load(sys.stdin)['userId'])")
 
 USER_B=$(curl -s -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
-  -d '{"username": "KENSHIN", "country": "cl", "privacyLevel": "PRIVATE"}' \
+  -d '{"username": "KENSHIN", "country": "cl", "privacyLevel": "PRIVATE", "gender": "MALE"}' \
   | python3 -c "import sys,json;print(json.load(sys.stdin)['userId'])")
 
 echo "yeikobu -> $USER_A"
@@ -303,8 +305,9 @@ curl -s -X POST http://localhost:8080/api/v1/training-sessions \
 ```
 
 ```bash
-# 8. The three leaderboard scopes
+# 8. The three leaderboard scopes, plus the women category on the global board
 curl -i -X GET "http://localhost:8080/api/v1/leaderboards/PULL_UP?scope=GLOBAL"
+curl -i -X GET "http://localhost:8080/api/v1/leaderboards/PULL_UP?scope=GLOBAL&gender=FEMALE"
 curl -i -X GET "http://localhost:8080/api/v1/leaderboards/PULL_UP?scope=COUNTRY&country=cl"
 curl -i -X GET "http://localhost:8080/api/v1/leaderboards/PULL_UP?scope=FRIENDS&userId=$USER_A"
 ```
@@ -317,7 +320,7 @@ curl -i -X GET "http://localhost:8080/api/v1/leaderboards/PULL_UP?scope=FRIENDS&
 # 9. kenshin becomes battousai
 curl -i -X PUT "http://localhost:8080/api/v1/users/$USER_B" \
   -H "Content-Type: application/json" \
-  -d '{"username": "battousai", "country": "jp", "privacyLevel": "PRIVATE"}'
+  -d '{"username": "battousai", "country": "jp", "privacyLevel": "PRIVATE", "gender": "MALE"}'
 
 # 10. The friendship and the ranking follow the athlete, not the old name
 curl -i -X GET "http://localhost:8080/api/v1/users/$USER_A/friends"
@@ -326,7 +329,7 @@ curl -i -X GET "http://localhost:8080/api/v1/leaderboards/PULL_UP?scope=FRIENDS&
 # 11. And the handle it left behind is free again
 curl -i -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
-  -d '{"username": "kenshin", "country": "cl", "privacyLevel": "PUBLIC"}'
+  -d '{"username": "kenshin", "country": "cl", "privacyLevel": "PUBLIC", "gender": "MALE"}'
 ```
 
 ### Every error the API can answer
@@ -335,7 +338,7 @@ curl -i -X POST http://localhost:8080/api/v1/users \
 # 400 VALIDATION_ERROR, the handle breaks the format rules
 curl -i -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
-  -d '{"username": "jacob aguilar", "country": "cl", "privacyLevel": "PUBLIC"}'
+  -d '{"username": "jacob aguilar", "country": "cl", "privacyLevel": "PUBLIC", "gender": "MALE"}'
 
 # 400 INVALID_REQUEST, the identity in the path is not a UUID
 curl -i -X GET http://localhost:8080/api/v1/users/yeikobu
@@ -343,7 +346,7 @@ curl -i -X GET http://localhost:8080/api/v1/users/yeikobu
 # 400 MALFORMED_REQUEST, unsupported enum value in the body
 curl -i -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
-  -d '{"username": "someone", "country": "cl", "privacyLevel": "SECRET"}'
+  -d '{"username": "someone", "country": "cl", "privacyLevel": "SECRET", "gender": "MALE"}'
 
 # 404 RESOURCE_NOT_FOUND, a well formed identity nobody owns
 curl -i -X GET http://localhost:8080/api/v1/users/00000000-0000-0000-0000-000000000000
@@ -358,7 +361,7 @@ curl -i -X PUT "http://localhost:8080/api/v1/friendships/$FRIENDSHIP" \
 # 409 RESOURCE_ALREADY_EXISTS, the handle is taken, casing included
 curl -i -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
-  -d '{"username": "YEIKOBU", "country": "cl", "privacyLevel": "PUBLIC"}'
+  -d '{"username": "YEIKOBU", "country": "cl", "privacyLevel": "PUBLIC", "gender": "MALE"}'
 
 # 422 BUSINESS_RULE_VIOLATION, an athlete cannot befriend itself
 curl -i -X POST http://localhost:8080/api/v1/friendships \

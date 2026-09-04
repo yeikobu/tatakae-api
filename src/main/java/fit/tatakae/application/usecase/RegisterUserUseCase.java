@@ -1,5 +1,6 @@
 package fit.tatakae.application.usecase;
 
+import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.PrivacyLevel;
 import fit.tatakae.domain.entity.User;
 import fit.tatakae.domain.exception.DuplicateUserException;
@@ -13,11 +14,11 @@ public class RegisterUserUseCase {
         this.userRepository = userRepository;
     }
 
-    public User execute(String username, String country, PrivacyLevel privacyLevel) {
+    public User execute(String username, String country, PrivacyLevel privacyLevel, Gender gender) {
         String handle = Username.normalize(username);
         if (userRepository.findByUsername(handle).isPresent()) {
             throw new DuplicateUserException("Username " + handle + " is already taken");
         }
-        return userRepository.save(User.register(handle, country, privacyLevel));
+        return userRepository.save(User.register(handle, country, privacyLevel, gender));
     }
 }

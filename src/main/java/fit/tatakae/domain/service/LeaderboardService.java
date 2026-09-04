@@ -1,6 +1,7 @@
 package fit.tatakae.domain.service;
 
 import fit.tatakae.domain.entity.Exercise;
+import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.TrainingSession;
 import fit.tatakae.domain.repository.SessionRepository;
 
@@ -25,30 +26,50 @@ public class LeaderboardService {
     }
 
     public List<TrainingSession> getGlobalRanking(Exercise exercise) {
+        return getGlobalRanking(exercise, null);
+    }
+
+    public List<TrainingSession> getGlobalRanking(Exercise exercise, Gender gender) {
         return rank(
                 sessionRepository.getAll().stream()
                         .filter(session -> session.getUser().isPublic())
                         .filter(session -> session.isForExercise(exercise))
+                        .filter(session -> matchesGender(session, gender))
         );
     }
 
     public List<TrainingSession> getLocalRanking(Exercise exercise, String country) {
+        return getLocalRanking(exercise, country, null);
+    }
+
+    public List<TrainingSession> getLocalRanking(Exercise exercise, String country, Gender gender) {
         return rank(
                 sessionRepository.getAll().stream()
                         .filter(session -> session.getUser().isPublic())
                         .filter(session -> session.isForExercise(exercise))
                         .filter(session -> session.getUser().isFromCountry(country))
+                        .filter(session -> matchesGender(session, gender))
         );
     }
 
     // Friends see each other regardless of privacy level: the shared circle is the audience the user opted into.
     public List<TrainingSession> getFriendsRanking(Exercise exercise, String userId, Set<String> friendIds) {
+        return getFriendsRanking(exercise, userId, friendIds, null);
+    }
+
+    public List<TrainingSession> getFriendsRanking(Exercise exercise, String userId, Set<String> friendIds, Gender gender) {
         Set<String> participants = Stream.concat(friendIds.stream(), Stream.of(userId)).collect(Collectors.toSet());
         return rank(
                 sessionRepository.getAll().stream()
                         .filter(session -> session.isForExercise(exercise))
                         .filter(session -> participants.contains(session.getUser().getUserId()))
+                        .filter(session -> matchesGender(session, gender))
         );
+    }
+
+    // A missing category keeps the ranking mixed; a value keeps only that men or women board.
+    private static boolean matchesGender(TrainingSession session, Gender gender) {
+        return gender == null || session.getUser().hasGender(gender);
     }
 
     // Keeps only the best session of each user and sorts the result.

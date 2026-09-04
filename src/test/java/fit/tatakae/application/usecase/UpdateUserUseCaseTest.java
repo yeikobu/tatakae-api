@@ -1,6 +1,7 @@
 package fit.tatakae.application.usecase;
 
 import fit.tatakae.TestUsers;
+import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.PrivacyLevel;
 import fit.tatakae.domain.entity.User;
 import fit.tatakae.domain.exception.DuplicateUserException;
@@ -40,7 +41,7 @@ public class UpdateUserUseCaseTest {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        User updated = useCase.execute(IDENTITY, "kenshin", "us", PrivacyLevel.PRIVATE);
+        User updated = useCase.execute(IDENTITY, "kenshin", "us", PrivacyLevel.PRIVATE, Gender.FEMALE);
 
         // Assert
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
@@ -49,6 +50,7 @@ public class UpdateUserUseCaseTest {
         assertEquals("kenshin", captor.getValue().getUsername());
         assertEquals("us", updated.getCountry());
         assertEquals(PrivacyLevel.PRIVATE, updated.getPrivacyLevel());
+        assertEquals(Gender.FEMALE, updated.getGender());
     }
 
     @Test
@@ -60,7 +62,7 @@ public class UpdateUserUseCaseTest {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        User updated = useCase.execute(IDENTITY, "yeikobu", "us", PrivacyLevel.PUBLIC);
+        User updated = useCase.execute(IDENTITY, "yeikobu", "us", PrivacyLevel.PUBLIC, Gender.MALE);
 
         // Assert
         assertEquals("us", updated.getCountry());
@@ -75,7 +77,7 @@ public class UpdateUserUseCaseTest {
 
         // Act and Assert
         assertThrows(ResourceNotFoundException.class, () -> {
-            useCase.execute(unknownIdentity, "yeikobu", "cl", PrivacyLevel.PUBLIC);
+            useCase.execute(unknownIdentity, "yeikobu", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
         });
         verify(userRepository, never()).save(any(User.class));
     }
@@ -88,7 +90,7 @@ public class UpdateUserUseCaseTest {
 
         // Act and Assert
         assertThrows(DuplicateUserException.class, () -> {
-            useCase.execute(IDENTITY, "kenshin", "cl", PrivacyLevel.PUBLIC);
+            useCase.execute(IDENTITY, "kenshin", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
         });
         verify(userRepository, never()).save(any(User.class));
     }
@@ -97,7 +99,7 @@ public class UpdateUserUseCaseTest {
     public void shouldRejectAnIdentityThatIsNotAUuid() {
         // Act and Assert
         assertThrows(InvalidUserException.class, () -> {
-            useCase.execute("yeikobu", "kenshin", "cl", PrivacyLevel.PUBLIC);
+            useCase.execute("yeikobu", "kenshin", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
         });
         verifyNoInteractions(userRepository);
     }

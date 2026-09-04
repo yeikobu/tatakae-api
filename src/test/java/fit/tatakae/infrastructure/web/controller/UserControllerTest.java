@@ -4,6 +4,7 @@ import fit.tatakae.TestUsers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fit.tatakae.application.usecase.*;
 import fit.tatakae.domain.entity.Friendship;
+import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.PrivacyLevel;
 import fit.tatakae.domain.entity.User;
 import fit.tatakae.domain.exception.DuplicateUserException;
@@ -60,8 +61,8 @@ public class UserControllerTest {
     public void shouldRegisterAUserAndReturnCreated() throws Exception {
         // Arrange
         User user = TestUsers.user("yeikobu", "cl", PrivacyLevel.PUBLIC);
-        when(registerUserUseCase.execute("yeikobu", "cl", PrivacyLevel.PUBLIC)).thenReturn(user);
-        CreateUserRequest request = new CreateUserRequest("yeikobu", "cl", PrivacyLevel.PUBLIC);
+        when(registerUserUseCase.execute("yeikobu", "cl", PrivacyLevel.PUBLIC, Gender.MALE)).thenReturn(user);
+        CreateUserRequest request = new CreateUserRequest("yeikobu", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
 
         // Act and Assert
         mockMvc.perform(post("/api/v1/users")
@@ -70,13 +71,14 @@ public class UserControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/api/v1/users/" + TestUsers.idOf("yeikobu")))
                 .andExpect(jsonPath("$.userId").value(TestUsers.idOf("yeikobu")))
-                .andExpect(jsonPath("$.username").value("yeikobu"));
+                .andExpect(jsonPath("$.username").value("yeikobu"))
+                .andExpect(jsonPath("$.gender").value("MALE"));
     }
 
     @Test
     public void shouldReturnBadRequestWithFieldDetailWhenPayloadIsInvalid() throws Exception {
         // Arrange
-        CreateUserRequest request = new CreateUserRequest("jacob aguilar", "cl", PrivacyLevel.PUBLIC);
+        CreateUserRequest request = new CreateUserRequest("jacob aguilar", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
 
         // Act and Assert
         mockMvc.perform(post("/api/v1/users")
@@ -86,15 +88,15 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.details[0]")
                         .value("username: username must use only letters, digits, dots and underscores"));
-        verify(registerUserUseCase, never()).execute(anyString(), anyString(), any());
+        verify(registerUserUseCase, never()).execute(anyString(), anyString(), any(), any());
     }
 
     @Test
     public void shouldReturnConflictWhenUsernameIsAlreadyTaken() throws Exception {
         // Arrange
-        when(registerUserUseCase.execute(anyString(), anyString(), any()))
+        when(registerUserUseCase.execute(anyString(), anyString(), any(), any()))
                 .thenThrow(new DuplicateUserException("Username yeikobu is already taken"));
-        CreateUserRequest request = new CreateUserRequest("yeikobu", "cl", PrivacyLevel.PUBLIC);
+        CreateUserRequest request = new CreateUserRequest("yeikobu", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
 
         // Act and Assert
         mockMvc.perform(post("/api/v1/users")
@@ -153,9 +155,9 @@ public class UserControllerTest {
     @Test
     public void shouldUpdateAUser() throws Exception {
         // Arrange
-        when(updateUserUseCase.execute(TestUsers.idOf("yeikobu"), "kenshin", "us", PrivacyLevel.PRIVATE))
-                .thenReturn(new User(TestUsers.idOf("yeikobu"), "kenshin", "us", PrivacyLevel.PRIVATE));
-        UpdateUserRequest request = new UpdateUserRequest("kenshin", "us", PrivacyLevel.PRIVATE);
+        when(updateUserUseCase.execute(TestUsers.idOf("yeikobu"), "kenshin", "us", PrivacyLevel.PRIVATE, Gender.FEMALE))
+                .thenReturn(new User(TestUsers.idOf("yeikobu"), "kenshin", "us", PrivacyLevel.PRIVATE, Gender.FEMALE));
+        UpdateUserRequest request = new UpdateUserRequest("kenshin", "us", PrivacyLevel.PRIVATE, Gender.FEMALE);
 
         // Act and Assert
         mockMvc.perform(put("/api/v1/users/" + TestUsers.idOf("yeikobu"))
@@ -259,9 +261,9 @@ public class UserControllerTest {
     @Test
     public void shouldReturnConflictWhenTheNewHandleBelongsToAnotherAthlete() throws Exception {
         // Arrange
-        when(updateUserUseCase.execute(anyString(), anyString(), anyString(), any()))
+        when(updateUserUseCase.execute(anyString(), anyString(), anyString(), any(), any()))
                 .thenThrow(new DuplicateUserException("Username kenshin is already taken"));
-        UpdateUserRequest request = new UpdateUserRequest("kenshin", "cl", PrivacyLevel.PUBLIC);
+        UpdateUserRequest request = new UpdateUserRequest("kenshin", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
 
         // Act and Assert
         mockMvc.perform(put("/api/v1/users/" + TestUsers.idOf("yeikobu"))
@@ -269,5 +271,27 @@ public class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("RESOURCE_ALREADY_EXISTS"));
+    }
+
+    @Test
+    public void shouldReturnBadRequestWhenGenderIsMissing() throws Exception {
+        // Act and Assert
+        mockMvc.perform(post("/api/v1/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\": \"yeikobu\", \"country\": \"cl\", \"privacyLevel\": \"PUBLIC\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.details[0]").value("gender: gender is required"));
+        verify(registerUserUseCase, never()).execute(anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    public void shouldReturnBadRequestWhenGenderIsUnsupported() throws Exception {
+        // Act and Assert
+        mockMvc.perform(post("/api/v1/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\": \"yeikobu\", \"country\": \"cl\", \"privacyLevel\": \"PUBLIC\", \"gender\": \"SECRET\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
     }
 }

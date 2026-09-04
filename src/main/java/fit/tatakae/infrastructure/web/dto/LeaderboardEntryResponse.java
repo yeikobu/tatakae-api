@@ -1,5 +1,6 @@
 package fit.tatakae.infrastructure.web.dto;
 
+import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.TrainingSession;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -12,6 +13,7 @@ public record LeaderboardEntryResponse(
         String userId,
         String username,
         String country,
+        Gender gender,
         int reps,
         Instant achievedAt) {
 
@@ -21,6 +23,7 @@ public record LeaderboardEntryResponse(
                 session.getUser().getUserId(),
                 session.getUser().getUsername(),
                 session.getUser().getCountry(),
+                session.getUser().getGender(),
                 session.getReps(),
                 session.getStart());
     }

@@ -2,6 +2,7 @@ package fit.tatakae.infrastructure.web.controller;
 
 import fit.tatakae.application.usecase.GetLeaderboardUseCase;
 import fit.tatakae.domain.entity.Exercise;
+import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.TrainingSession;
 import fit.tatakae.infrastructure.web.dto.LeaderboardEntryResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,12 +43,15 @@ public class LeaderboardController {
             @RequestParam(required = false) String country,
             @Parameter(description = "Required when the scope is FRIENDS",
                     example = "3f2a9c1e-6b5d-4c8a-9f11-72d0e4a1b8c3")
-            @RequestParam(required = false) String userId) {
+            @RequestParam(required = false) String userId,
+            @Parameter(description = "Optional men or women category. Omit it for a mixed ranking",
+                    example = "FEMALE")
+            @RequestParam(required = false) Gender gender) {
 
         return position(switch (parseScope(scope)) {
-            case GLOBAL -> getLeaderboardUseCase.executeGlobal(exercise);
-            case COUNTRY -> getLeaderboardUseCase.executeByCountry(exercise, require(country, "country", "COUNTRY"));
-            case FRIENDS -> getLeaderboardUseCase.executeByFriends(exercise, require(userId, "userId", "FRIENDS"));
+            case GLOBAL -> getLeaderboardUseCase.executeGlobal(exercise, gender);
+            case COUNTRY -> getLeaderboardUseCase.executeByCountry(exercise, require(country, "country", "COUNTRY"), gender);
+            case FRIENDS -> getLeaderboardUseCase.executeByFriends(exercise, require(userId, "userId", "FRIENDS"), gender);
         });
     }
 

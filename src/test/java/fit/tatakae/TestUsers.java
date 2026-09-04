@@ -1,5 +1,6 @@
 package fit.tatakae;
 
+import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.PrivacyLevel;
 import fit.tatakae.domain.entity.User;
 
@@ -17,8 +18,12 @@ public final class TestUsers {
         return UUID.nameUUIDFromBytes(username.getBytes(StandardCharsets.UTF_8)).toString();
     }
 
+    public static User user(String username, String country, PrivacyLevel privacyLevel, Gender gender) {
+        return new User(idOf(username), username, country, privacyLevel, gender);
+    }
+
     public static User user(String username, String country, PrivacyLevel privacyLevel) {
-        return new User(idOf(username), username, country, privacyLevel);
+        return user(username, country, privacyLevel, Gender.MALE);
     }
 
     public static User user(String username) {
