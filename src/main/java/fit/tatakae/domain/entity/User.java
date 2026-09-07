@@ -9,28 +9,39 @@ public class User {
     private final String country;
     private final PrivacyLevel privacyLevel;
     private final Gender gender;
+    private final String appleSub;
 
     // Reconstitution constructor: used when the athlete identity already exists (e.g. loaded from a repository).
     public User(String userId, String username, String country, PrivacyLevel privacyLevel, Gender gender) {
-        this(UserId.of(userId), new Username(username), country, privacyLevel, gender);
+        this(UserId.of(userId), new Username(username), country, privacyLevel, gender, null);
     }
 
-    private User(UserId userId, Username username, String country, PrivacyLevel privacyLevel, Gender gender) {
+    public User(String userId, String username, String country, PrivacyLevel privacyLevel, Gender gender, String appleSub) {
+        this(UserId.of(userId), new Username(username), country, privacyLevel, gender, appleSub);
+    }
+
+    private User(UserId userId, Username username, String country, PrivacyLevel privacyLevel, Gender gender, String appleSub) {
         this.userId = userId;
         this.username = username;
         this.country = country;
         this.privacyLevel = privacyLevel;
         this.gender = gender;
+        this.appleSub = appleSub;
     }
 
     // A brand new athlete: the identity is minted here, never accepted from the outside.
     public static User register(String username, String country, PrivacyLevel privacyLevel, Gender gender) {
-        return new User(UserId.generate(), new Username(username), country, privacyLevel, gender);
+        return new User(UserId.generate(), new Username(username), country, privacyLevel, gender, null);
+    }
+
+    // Register an athlete via Apple Sign In: the identity is minted here, and linked to the Apple sub.
+    public static User registerWithApple(String appleSub, String username, String country, PrivacyLevel privacyLevel, Gender gender) {
+        return new User(UserId.generate(), new Username(username), country, privacyLevel, gender, appleSub);
     }
 
     // Profile changes, handle included, never touch the identity.
     public User updatedTo(String username, String country, PrivacyLevel privacyLevel, Gender gender) {
-        return new User(this.userId, new Username(username), country, privacyLevel, gender);
+        return new User(this.userId, new Username(username), country, privacyLevel, gender, this.appleSub);
     }
 
     public String getUserId() {
@@ -67,6 +78,10 @@ public class User {
 
     public boolean hasUsername(String otherUsername) {
         return this.username.equals(new Username(otherUsername));
+    }
+
+    public String getAppleSub() {
+        return this.appleSub;
     }
 
     @Override

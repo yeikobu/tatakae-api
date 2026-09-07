@@ -7,6 +7,14 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+app:
+  apple:
+    # Comma-separated list of Apple client IDs (iOS Bundle ID and Web Services ID)
+    # Example: com.tatakae.ios,fit.tatakae.web
+    client-ids: ${APPLE_CLIENT_IDS:com.example.tatakae,fit.tatakae.web}
+    # Apple's public JWKS endpoint for token validation
+    jwks-url: ${APPLE_JWKS_URL:https://appleid.apple.com/auth/keys}
+
 # Only the health probe is reachable over HTTP, mapped to /healthcheck.
 # It reports DOWN when a required dependency such as PostgreSQL is unreachable,
 # so it is a real liveness signal and not a hardcoded "UP".

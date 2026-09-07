@@ -8,6 +8,7 @@ import java.util.Optional;
 public interface UserRepository {
     Optional<User> findById(String userId);
     Optional<User> findByUsername(String username);
+    Optional<User> findByAppleSub(String appleSub);
     List<User> findAll();
     boolean existsById(String userId);
     User save(User user);
