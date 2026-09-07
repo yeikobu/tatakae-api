@@ -47,6 +47,12 @@ public class GlobalExceptionHandler {
         return build(exception.getMessage(), "FORBIDDEN", HttpStatus.FORBIDDEN, request);
     }
 
+    @ExceptionHandler(AuthenticationRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationRequired(AuthenticationRequiredException exception,
+                                                                      HttpServletRequest request) {
+        return build(exception.getMessage(), "UNAUTHORIZED", HttpStatus.UNAUTHORIZED, request);
+    }
+
     @ExceptionHandler({
             InvalidUserException.class,
             InvalidFriendshipException.class,

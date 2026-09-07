@@ -4,6 +4,7 @@ import fit.tatakae.application.usecase.GetLeaderboardUseCase;
 import fit.tatakae.domain.entity.Exercise;
 import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.TrainingSession;
+import fit.tatakae.domain.exception.AuthenticationRequiredException;
 import fit.tatakae.infrastructure.web.dto.LeaderboardEntryResponse;
 import fit.tatakae.infrastructure.web.security.SecurityContextHelper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,7 +46,15 @@ public class LeaderboardController {
                     example = "FEMALE")
             @RequestParam(required = false) Gender gender) {
 
-        return position(switch (parseScope(scope)) {
+        LeaderboardScope parsedScope = parseScope(scope);
+        
+        // Friends ranking requires authentication - check early to return 401 instead of 500
+        if (parsedScope == LeaderboardScope.FRIENDS && !SecurityContextHelper.isAuthenticated()) {
+            throw new AuthenticationRequiredException(
+                "Authentication required: friends ranking is scoped to your friendship graph");
+        }
+
+        return position(switch (parsedScope) {
             case GLOBAL -> getLeaderboardUseCase.executeGlobal(exercise, gender);
             case COUNTRY -> getLeaderboardUseCase.executeByCountry(exercise, require(country, "country", "COUNTRY"), gender);
             case FRIENDS -> {

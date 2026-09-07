@@ -40,8 +40,10 @@ public class AppleJwtValidatorTest {
                 .keyID("test-key-id")
                 .generate();
 
-        lenient().when(appleAuthProperties.getClientIds()).thenReturn(List.of(TEST_CLIENT_ID, "fit.tatakae.web"));
-        lenient().when(appleAuthProperties.getJwksUrl()).thenReturn("https://appleid.apple.com/auth/keys");
+        AppleAuthProperties.Apple apple = new AppleAuthProperties.Apple();
+        apple.setClientIds(List.of(TEST_CLIENT_ID, "fit.tatakae.web"));
+        apple.setJwksUrl("https://appleid.apple.com/auth/keys");
+        lenient().when(appleAuthProperties.getApple()).thenReturn(apple);
 
         validator = new AppleJwtValidator(appleAuthProperties);
     }
