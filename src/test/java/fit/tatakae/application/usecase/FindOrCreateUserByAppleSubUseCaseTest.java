@@ -62,7 +62,7 @@ public class FindOrCreateUserByAppleSubUseCaseTest {
         assertTrue(savedUser.getUsername().startsWith("athlete_"));
         assertEquals("unknown", savedUser.getCountry());
         assertEquals(PrivacyLevel.PUBLIC, savedUser.getPrivacyLevel());
-        assertEquals(Gender.MALE, savedUser.getGender());
+        assertEquals(Gender.UNSPECIFIED, savedUser.getGender());
     }
 
     @Test

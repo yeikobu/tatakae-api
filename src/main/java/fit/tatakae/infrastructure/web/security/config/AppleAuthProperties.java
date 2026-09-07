@@ -6,25 +6,58 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component
-@ConfigurationProperties(prefix = "app.apple")
+@ConfigurationProperties(prefix = "app")
 public class AppleAuthProperties {
 
-    private List<String> clientIds;
-    private String jwksUrl;
+    private Apple apple = new Apple();
+    private Cors cors = new Cors();
 
-    public List<String> getClientIds() {
-        return clientIds;
+    public Apple getApple() {
+        return apple;
     }
 
-    public void setClientIds(List<String> clientIds) {
-        this.clientIds = clientIds;
+    public void setApple(Apple apple) {
+        this.apple = apple;
     }
 
-    public String getJwksUrl() {
-        return jwksUrl;
+    public Cors getCors() {
+        return cors;
     }
 
-    public void setJwksUrl(String jwksUrl) {
-        this.jwksUrl = jwksUrl;
+    public void setCors(Cors cors) {
+        this.cors = cors;
+    }
+
+    public static class Apple {
+        private List<String> clientIds;
+        private String jwksUrl;
+
+        public List<String> getClientIds() {
+            return clientIds;
+        }
+
+        public void setClientIds(List<String> clientIds) {
+            this.clientIds = clientIds;
+        }
+
+        public String getJwksUrl() {
+            return jwksUrl;
+        }
+
+        public void setJwksUrl(String jwksUrl) {
+            this.jwksUrl = jwksUrl;
+        }
+    }
+
+    public static class Cors {
+        private List<String> allowedOrigins;
+
+        public List<String> getAllowedOrigins() {
+            return allowedOrigins;
+        }
+
+        public void setAllowedOrigins(List<String> allowedOrigins) {
+            this.allowedOrigins = allowedOrigins;
+        }
     }
 }

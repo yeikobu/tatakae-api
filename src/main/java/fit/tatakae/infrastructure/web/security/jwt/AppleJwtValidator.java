@@ -68,7 +68,7 @@ public class AppleJwtValidator {
         }
 
         boolean validAudience = claimsSet.getAudience().stream()
-                .anyMatch(aud -> appleAuthProperties.getClientIds().contains(aud));
+                .anyMatch(aud -> appleAuthProperties.getApple().getClientIds().contains(aud));
 
         if (!validAudience) {
             throw new InvalidAppleJwtException("Invalid audience: " + claimsSet.getAudience());
@@ -135,8 +135,8 @@ public class AppleJwtValidator {
 
     private synchronized JWKSet refreshJwkSet() {
         try {
-            logger.info("Fetching Apple JWKS from {}", appleAuthProperties.getJwksUrl());
-            jwkSet = JWKSet.load(new URL(appleAuthProperties.getJwksUrl()));
+            logger.info("Fetching Apple JWKS from {}", appleAuthProperties.getApple().getJwksUrl());
+            jwkSet = JWKSet.load(new URL(appleAuthProperties.getApple().getJwksUrl()));
             jwkSetLastFetched = Instant.now();
             logger.info("Apple JWKS refreshed successfully");
             return jwkSet;

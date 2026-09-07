@@ -52,6 +52,9 @@ export APPLE_CLIENT_IDS="com.tatakae.ios,fit.tatakae.web"
 
 # Apple JWKS URL (default: https://appleid.apple.com/auth/keys)
 export APPLE_JWKS_URL="https://appleid.apple.com/auth/keys"
+
+# Comma-separated list of allowed CORS origins
+export CORS_ALLOWED_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,https://tatakae.fit"
 ```
 
 **Development placeholders:** The default values in `application.yaml` are `com.example.tatakae,fit.tatakae.web`. Replace them with your actual Apple client IDs before deploying to production.
@@ -62,29 +65,42 @@ export APPLE_JWKS_URL="https://appleid.apple.com/auth/keys"
 3. The API validates the token signature against Apple's public JWKS.
 4. On successful validation, the API finds or creates an athlete linked to the Apple `sub` (subject identifier).
 5. Write endpoints (POST, PUT, PATCH, DELETE) require authentication; read endpoints (GET) remain public.
+6. **Ownership validation:** Users can only modify their own resources (profile, sessions, friend requests they sent).
+7. **Invalid/expired tokens:** Return 401 Unauthorized immediately; the filter stops the chain.
+8. **Friends ranking:** Requires authentication and is automatically scoped to the authenticated user's friendship graph.
 
-### 2. Run the automated tests
+### 2. Apply database migrations
+
+Flyway manages schema migrations. On first run or after pulling new migrations:
+
+```bash
+./mvnw flyway:migrate
+```
+
+Or just start the application - Flyway runs automatically on boot. To start from an existing database without Flyway history, set `spring.flyway.baseline-on-migrate=true` (already configured in dev profile).
+
+### 3. Run the automated tests
 
 ```bash
 ./mvnw clean test
 ```
 
-JUnit 5 + Mockito, against PostgreSQL via Testcontainers. JaCoCo enforces 100% line and branch coverage on `./mvnw verify`.
+JUnit 5 + Mockito, against PostgreSQL via Testcontainers (integration tests) and mocks (unit tests). JaCoCo enforces 100% line and branch coverage on `./mvnw verify`.
 
-### 3. Start the backend microservice
+### 4. Start the backend microservice
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-`application.yaml` sets `spring.profiles.default: dev`, so Swagger is on and the local database is used.
+`application.yaml` sets `spring.profiles.default: dev`, so Swagger is on and the local database is used. Flyway migrations run automatically on startup.
 
 * REST API: http://localhost:8080/api/v1
 * Swagger UI (dev profile only): http://localhost:8080/swagger-ui.html
 
 CORS is configured in `SecurityConfig` to allow `localhost:5173` and `127.0.0.1:5173`. Production (`SPRING_PROFILES_ACTIVE=prod`) keeps Swagger disabled.
 
-### 4. Start the web frontend
+### 5. Start the web frontend
 
 ```bash
 cd ../Tatakae-frontend
@@ -95,6 +111,8 @@ npm run dev
 
 * Web app: http://localhost:5173
 * API base URL (`.env`): `http://localhost:8080/api/v1`
+
+**Note:** Write operations require a valid Apple Sign In JWT token in the `Authorization: Bearer <token>` header. Read operations (GET) remain public except for the friends ranking scope which requires authentication.
 
 ---
 

@@ -20,7 +20,7 @@ public class FindOrCreateUserByAppleSubUseCase {
 
     private User createDefaultUser(String appleSub) {
         String defaultUsername = "athlete_" + appleSub.substring(0, Math.min(8, appleSub.length()));
-        User newUser = User.registerWithApple(appleSub, defaultUsername, "unknown", PrivacyLevel.PUBLIC, Gender.MALE);
+        User newUser = User.registerWithApple(appleSub, defaultUsername, "unknown", PrivacyLevel.PUBLIC, Gender.UNSPECIFIED);
         return userRepository.save(newUser);
     }
 }
