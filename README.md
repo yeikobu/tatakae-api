@@ -6,7 +6,8 @@ Academic project for the Talento Ready program (Desafío Latam / Globant). This 
 
 ## 🛠️ Tech Stack
 
-* **Backend:** Java 21, Spring Boot 3, Spring Data JPA, Hibernate, OpenAPI/Swagger.
+* **Backend:** Java 21, Spring Boot 3, Spring Data JPA, Hibernate, Spring Security, OpenAPI/Swagger.
+* **Authentication:** Sign in with Apple JWT validation via Apple JWKS.
 * **Frontend:** Vanilla TypeScript, Vite, Native ESM, semantic HTML5/CSS3.
 * **Infrastructure:** Docker Compose, PostgreSQL 16 Alpine.
 * **Quality and testing:** JUnit 5, Mockito, JaCoCo, TDD and Clean Architecture.
@@ -41,28 +42,65 @@ docker compose up -d
 
 PostgreSQL 16 Alpine listens on `localhost:5432` (database `tatakae_db`, user `tatakae_user`). Override `DB_NAME`, `DB_USER`, `DB_PASSWORD` and `DB_PORT` with environment variables if needed. Production credentials are never hardcoded: `application-prod.yaml` reads `DB_USER` and `DB_PASSWORD` with no fallback.
 
-### 2. Run the automated tests
+#### Apple Authentication Configuration
+
+The API requires Sign in with Apple JWT tokens for write operations. Configure the following environment variables:
+
+```bash
+# Comma-separated list of Apple client IDs (iOS Bundle ID and Web Services ID)
+export APPLE_CLIENT_IDS="com.tatakae.ios,fit.tatakae.web"
+
+# Apple JWKS URL (default: https://appleid.apple.com/auth/keys)
+export APPLE_JWKS_URL="https://appleid.apple.com/auth/keys"
+
+# Comma-separated list of allowed CORS origins
+export CORS_ALLOWED_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,https://tatakae.fit"
+```
+
+**Development placeholders:** The default values in `application.yaml` are `com.example.tatakae,fit.tatakae.web`. Replace them with your actual Apple client IDs before deploying to production.
+
+**How it works:**
+1. iOS and web clients obtain an identity token from Apple Sign In.
+2. The token is sent in the `Authorization: Bearer <token>` header.
+3. The API validates the token signature against Apple's public JWKS.
+4. On successful validation, the API finds or creates an athlete linked to the Apple `sub` (subject identifier).
+5. Write endpoints (POST, PUT, PATCH, DELETE) require authentication; read endpoints (GET) remain public.
+6. **Ownership validation:** Users can only modify their own resources (profile, sessions, friend requests they sent).
+7. **Invalid/expired tokens:** Return 401 Unauthorized immediately; the filter stops the chain.
+8. **Friends ranking:** Requires authentication and is automatically scoped to the authenticated user's friendship graph.
+
+### 2. Apply database migrations
+
+Flyway manages schema migrations. On first run or after pulling new migrations:
+
+```bash
+./mvnw flyway:migrate
+```
+
+Or just start the application - Flyway runs automatically on boot. To start from an existing database without Flyway history, set `spring.flyway.baseline-on-migrate=true` (already configured in dev profile).
+
+### 3. Run the automated tests
 
 ```bash
 ./mvnw clean test
 ```
 
-JUnit 5 + Mockito, against PostgreSQL via Testcontainers. JaCoCo enforces 100% line and branch coverage on `./mvnw verify`.
+JUnit 5 + Mockito, against PostgreSQL via Testcontainers (integration tests) and mocks (unit tests). JaCoCo enforces 100% line and branch coverage on `./mvnw verify`.
 
-### 3. Start the backend microservice
+### 4. Start the backend microservice
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-`application.yaml` sets `spring.profiles.default: dev`, so Swagger is on and the local database is used.
+`application.yaml` sets `spring.profiles.default: dev`, so Swagger is on and the local database is used. Flyway migrations run automatically on startup.
 
 * REST API: http://localhost:8080/api/v1
 * Swagger UI (dev profile only): http://localhost:8080/swagger-ui.html
 
-Controllers declare `@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173"})`. Production (`SPRING_PROFILES_ACTIVE=prod`) keeps Swagger disabled.
+CORS is configured in `SecurityConfig` to allow `localhost:5173` and `127.0.0.1:5173`. Production (`SPRING_PROFILES_ACTIVE=prod`) keeps Swagger disabled.
 
-### 4. Start the web frontend
+### 5. Start the web frontend
 
 ```bash
 cd ../Tatakae-frontend
@@ -73,6 +111,8 @@ npm run dev
 
 * Web app: http://localhost:5173
 * API base URL (`.env`): `http://localhost:8080/api/v1`
+
+**Note:** Write operations require a valid Apple Sign In JWT token in the `Authorization: Bearer <token>` header. Read operations (GET) remain public except for the friends ranking scope which requires authentication.
 
 ---
 
@@ -88,9 +128,24 @@ Friendship, training session and leaderboard microservice for **Tatakae**, an iO
 
 > **Academic project.** Built for the **Talento Ready** program by **Desafío Latam** and **Globant**. Milestone 1 produced the pure domain core, Milestone 3 restructured it into layered Clean Architecture with tactical DDD, and **Milestone 4 (this delivery)** turned it into a persistent, documented Spring Boot microservice. It models what the social and leaderboard backend for Tatakae could look like; it is not the production backend of the published app.
 
-## Identity and handle are two different things
+## Authentication and Identity
 
-An athlete has a **`userId`**, a server generated UUID, and a **`username`**, the public handle other people type. They are deliberately separate.
+### Sign in with Apple JWT
+
+All write operations require authentication via Sign in with Apple identity tokens:
+
+- **iOS app:** Uses the iOS Bundle ID as the audience claim.
+- **Web app:** Uses the Web Services ID as the audience claim.
+- Both share the same Apple `sub` (subject identifier), which uniquely identifies an athlete across platforms.
+
+When a valid Apple JWT is received:
+1. The API validates the token signature against Apple's public JWKS.
+2. It finds or creates an athlete linked to the Apple `sub`.
+3. The authenticated user's internal `userId` is used for authorization.
+
+### Identity and handle are two different things
+
+An athlete has a **`userId`**, a server generated UUID, a **`username`**, the public handle other people type, and an optional **`appleSub`**, the Apple identity. They are deliberately separate.
 
 - The **identity never changes**. Friendships, training sessions and any future moderation record point at the UUID, so a rename can never orphan them or hand a report over to whoever grabs the freed handle.
 - The **handle can change**, and it is unique at any point in time. `PUT /api/v1/users/{userId}` renames an athlete and answers 409 when another one already owns the target handle.

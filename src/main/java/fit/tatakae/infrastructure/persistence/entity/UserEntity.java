@@ -34,15 +34,19 @@ public class UserEntity {
     @ColumnDefault("'MALE'")
     private Gender gender;
 
+    @Column(name = "apple_sub", unique = true)
+    private String appleSub;
+
     protected UserEntity() {
     }
 
-    public UserEntity(String id, String username, String country, PrivacyLevel privacyLevel, Gender gender) {
+    public UserEntity(String id, String username, String country, PrivacyLevel privacyLevel, Gender gender, String appleSub) {
         this.id = id;
         this.username = username;
         this.country = country;
         this.privacyLevel = privacyLevel;
         this.gender = gender;
+        this.appleSub = appleSub;
     }
 
     public String getId() {
@@ -63,5 +67,9 @@ public class UserEntity {
 
     public Gender getGender() {
         return gender;
+    }
+
+    public String getAppleSub() {
+        return appleSub;
     }
 }

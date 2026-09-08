@@ -4,7 +4,9 @@ import fit.tatakae.application.usecase.GetLeaderboardUseCase;
 import fit.tatakae.domain.entity.Exercise;
 import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.TrainingSession;
+import fit.tatakae.domain.exception.AuthenticationRequiredException;
 import fit.tatakae.infrastructure.web.dto.LeaderboardEntryResponse;
+import fit.tatakae.infrastructure.web.security.SecurityContextHelper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -17,8 +19,6 @@ import java.util.stream.IntStream;
 
 @RestController
 @RequestMapping("/api/v1/leaderboards")
-// First call the SPA makes. If this origin is missing, the console stays red and the ranking never paints.
-@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173"})
 @Tag(name = "Leaderboards", description = "Global, local and friends rankings per exercise")
 public class LeaderboardController {
 
@@ -32,7 +32,8 @@ public class LeaderboardController {
     @Operation(summary = "Get the ranking of one exercise in the requested scope")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Ranking returned"),
-            @ApiResponse(responseCode = "400", description = "Unknown scope or missing parameter for the scope")
+            @ApiResponse(responseCode = "400", description = "Unknown scope or missing parameter for the scope"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized: FRIENDS scope requires authentication")
     })
     public List<LeaderboardEntryResponse> ranking(
             @Parameter(description = "Exercise counted by the app", example = "PULL_UP")
@@ -41,17 +42,27 @@ public class LeaderboardController {
             @RequestParam(defaultValue = "GLOBAL") String scope,
             @Parameter(description = "Required when the scope is COUNTRY", example = "cl")
             @RequestParam(required = false) String country,
-            @Parameter(description = "Required when the scope is FRIENDS",
-                    example = "3f2a9c1e-6b5d-4c8a-9f11-72d0e4a1b8c3")
-            @RequestParam(required = false) String userId,
             @Parameter(description = "Optional men or women category. Omit it for a mixed ranking",
                     example = "FEMALE")
             @RequestParam(required = false) Gender gender) {
 
-        return position(switch (parseScope(scope)) {
+        LeaderboardScope parsedScope = parseScope(scope);
+        
+        // Friends ranking requires authentication - check early to return 401 instead of 500
+        if (parsedScope == LeaderboardScope.FRIENDS && !SecurityContextHelper.isAuthenticated()) {
+            throw new AuthenticationRequiredException(
+                "Authentication required: friends ranking is scoped to your friendship graph");
+        }
+
+        return position(switch (parsedScope) {
             case GLOBAL -> getLeaderboardUseCase.executeGlobal(exercise, gender);
             case COUNTRY -> getLeaderboardUseCase.executeByCountry(exercise, require(country, "country", "COUNTRY"), gender);
-            case FRIENDS -> getLeaderboardUseCase.executeByFriends(exercise, require(userId, "userId", "FRIENDS"), gender);
+            case FRIENDS -> {
+                // Friends ranking is scoped to the authenticated user's friendship graph
+                // Never trust userId from request params - always use the authenticated principal
+                String authenticatedUserId = SecurityContextHelper.getAuthenticatedUserId();
+                yield getLeaderboardUseCase.executeByFriends(exercise, authenticatedUserId, gender);
+            }
         });
     }
 

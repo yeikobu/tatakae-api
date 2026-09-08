@@ -41,6 +41,18 @@ public class GlobalExceptionHandler {
         return build(exception.getMessage(), "BUSINESS_RULE_VIOLATION", HttpStatus.UNPROCESSABLE_ENTITY, request);
     }
 
+    @ExceptionHandler(ForbiddenOperationException.class)
+    public ResponseEntity<ErrorResponse> handleForbidden(ForbiddenOperationException exception,
+                                                         HttpServletRequest request) {
+        return build(exception.getMessage(), "FORBIDDEN", HttpStatus.FORBIDDEN, request);
+    }
+
+    @ExceptionHandler(AuthenticationRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationRequired(AuthenticationRequiredException exception,
+                                                                      HttpServletRequest request) {
+        return build(exception.getMessage(), "UNAUTHORIZED", HttpStatus.UNAUTHORIZED, request);
+    }
+
     @ExceptionHandler({
             InvalidUserException.class,
             InvalidFriendshipException.class,

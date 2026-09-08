@@ -3,8 +3,10 @@ package fit.tatakae.infrastructure.web.controller;
 import fit.tatakae.application.usecase.GetUserUseCase;
 import fit.tatakae.application.usecase.RecordTrainingSessionUseCase;
 import fit.tatakae.domain.entity.User;
+import fit.tatakae.domain.exception.ForbiddenOperationException;
 import fit.tatakae.infrastructure.web.dto.CreateTrainingSessionRequest;
 import fit.tatakae.infrastructure.web.dto.TrainingSessionResponse;
+import fit.tatakae.infrastructure.web.security.SecurityContextHelper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -18,7 +20,6 @@ import java.time.Clock;
 
 @RestController
 @RequestMapping("/api/v1/training-sessions")
-@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173"})
 @Tag(name = "Training sessions", description = "Sets counted by the on device rep detector")
 public class TrainingSessionController {
 
@@ -39,10 +40,15 @@ public class TrainingSessionController {
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Session recorded"),
             @ApiResponse(responseCode = "400", description = "Invalid payload or inconsistent timeframe"),
+            @ApiResponse(responseCode = "403", description = "Forbidden: can only record sessions for yourself"),
             @ApiResponse(responseCode = "404", description = "Athlete not found"),
             @ApiResponse(responseCode = "422", description = "The set exceeds the reps humanly possible for the exercise")
     })
     public ResponseEntity<TrainingSessionResponse> record(@Valid @RequestBody CreateTrainingSessionRequest request) {
+        String authenticatedUserId = SecurityContextHelper.getAuthenticatedUserId();
+        if (!authenticatedUserId.equals(request.userId())) {
+            throw new ForbiddenOperationException("Cannot record training sessions for another user");
+        }
         User user = getUserUseCase.execute(request.userId());
         TrainingSessionResponse body = TrainingSessionResponse.from(recordTrainingSessionUseCase.execute(
                 user, request.exercise(), request.reps(), request.start(), request.end(), clock));

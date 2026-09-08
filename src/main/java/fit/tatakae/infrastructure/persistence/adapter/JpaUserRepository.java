@@ -28,6 +28,11 @@ public class JpaUserRepository implements UserRepository {
     }
 
     @Override
+    public Optional<User> findByAppleSub(String appleSub) {
+        return userJpaRepository.findByAppleSub(appleSub).map(UserMapper::toDomain);
+    }
+
+    @Override
     public List<User> findAll() {
         return userJpaRepository.findAll().stream().map(UserMapper::toDomain).toList();
     }

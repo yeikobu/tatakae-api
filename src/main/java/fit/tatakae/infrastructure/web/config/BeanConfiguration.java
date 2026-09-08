@@ -106,4 +106,9 @@ public class BeanConfiguration {
                                                        FriendshipRepository friendshipRepository) {
         return new GetLeaderboardUseCase(leaderboardService, friendshipRepository);
     }
+
+    @Bean
+    public FindOrCreateUserByAppleSubUseCase findOrCreateUserByAppleSubUseCase(UserRepository userRepository) {
+        return new FindOrCreateUserByAppleSubUseCase(userRepository);
+    }
 }

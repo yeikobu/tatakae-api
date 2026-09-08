@@ -9,10 +9,10 @@ public final class UserMapper {
     }
 
     public static User toDomain(UserEntity entity) {
-        return new User(entity.getId(), entity.getUsername(), entity.getCountry(), entity.getPrivacyLevel(), entity.getGender());
+        return new User(entity.getId(), entity.getUsername(), entity.getCountry(), entity.getPrivacyLevel(), entity.getGender(), entity.getAppleSub());
     }
 
     public static UserEntity toEntity(User user) {
-        return new UserEntity(user.getUserId(), user.getUsername(), user.getCountry(), user.getPrivacyLevel(), user.getGender());
+        return new UserEntity(user.getUserId(), user.getUsername(), user.getCountry(), user.getPrivacyLevel(), user.getGender(), user.getAppleSub());
     }
 }

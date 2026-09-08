@@ -1,10 +1,12 @@
 package fit.tatakae.infrastructure.web.controller;
 
 import fit.tatakae.application.usecase.*;
+import fit.tatakae.domain.exception.ForbiddenOperationException;
 import fit.tatakae.infrastructure.web.dto.CreateUserRequest;
 import fit.tatakae.infrastructure.web.dto.FriendshipResponse;
 import fit.tatakae.infrastructure.web.dto.UpdateUserRequest;
 import fit.tatakae.infrastructure.web.dto.UserResponse;
+import fit.tatakae.infrastructure.web.security.SecurityContextHelper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -20,9 +22,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/users")
-// Vite (:5173) and this service (:8080) are different origins. Without the header
-// the browser drops the JSON; a Vite proxy would hide that from the course rubric.
-@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173"})
 @Tag(name = "Users", description = "Athletes registered in Tatakae")
 public class UserController {
 
@@ -96,10 +95,15 @@ public class UserController {
     @Operation(summary = "Update an athlete profile")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Athlete updated"),
+            @ApiResponse(responseCode = "403", description = "Forbidden: can only update own profile"),
             @ApiResponse(responseCode = "404", description = "Athlete not found"),
             @ApiResponse(responseCode = "409", description = "Handle already taken by another athlete")
     })
     public UserResponse update(@PathVariable String userId, @Valid @RequestBody UpdateUserRequest request) {
+        String authenticatedUserId = SecurityContextHelper.getAuthenticatedUserId();
+        if (!authenticatedUserId.equals(userId)) {
+            throw new ForbiddenOperationException("Cannot update another user's profile");
+        }
         return UserResponse.from(updateUserUseCase.execute(
                 userId, request.username(), request.country(), request.privacyLevel(), request.gender()));
     }
@@ -109,9 +113,14 @@ public class UserController {
     @Operation(summary = "Delete an athlete")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Athlete deleted"),
+            @ApiResponse(responseCode = "403", description = "Forbidden: can only delete own account"),
             @ApiResponse(responseCode = "404", description = "Athlete not found")
     })
     public void delete(@PathVariable String userId) {
+        String authenticatedUserId = SecurityContextHelper.getAuthenticatedUserId();
+        if (!authenticatedUserId.equals(userId)) {
+            throw new ForbiddenOperationException("Cannot delete another user's account");
+        }
         deleteUserUseCase.execute(userId);
     }
 
