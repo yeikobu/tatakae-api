@@ -1,0 +1,20 @@
+# Caddyfile for tatakae-api production deployment
+# Caddy automatically obtains and renews TLS certificates from Let's Encrypt
+
+# API host: api.tatakae.fit
+api.tatakae.fit {
+    # Reverse proxy to the Spring Boot API container
+    reverse_proxy api:8080
+    
+    # Enable compression
+    encode gzip
+    
+    # Access logging
+    log {
+        output file /data/access.log
+        format json
+    }
+}
+
+# Redirect HTTP to HTTPS (automatic)
+# Caddy handles this by default for all sites
