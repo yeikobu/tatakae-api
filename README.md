@@ -116,6 +116,147 @@ npm run dev
 
 ---
 
+## 🐳 Production Deployment with Docker
+
+The production setup uses Docker Compose with three services: PostgreSQL (internal only), the Spring Boot API, and Caddy as a reverse proxy with automatic TLS/HTTPS.
+
+### Prerequisites
+
+- Docker and Docker Compose installed on the VPS
+- DNS A record: `api.tatakae.fit` → `13.140.40.40` (already configured)
+- ufw firewall configured (see security notes below)
+
+### Production Environment Variables
+
+Copy `.env.example` to `.env` and configure the following required variables:
+
+```bash
+# Database credentials (no defaults - required)
+DB_NAME=tatakae_db
+DB_USER=your_db_user
+DB_PASSWORD=your_secure_password
+
+# Apple Sign In authentication (required, comma-separated)
+# Known iOS client IDs: com.aguilarjacob.tatakae, com.aguilarjacob.tatakae.dev
+# Web Services ID will be added when confirmed
+APPLE_CLIENT_IDS=com.aguilarjacob.tatakae,com.aguilarjacob.tatakae.dev
+
+# CORS allowed origins (required)
+# Production origin only (add www subdomain if configured)
+CORS_ALLOWED_ORIGINS=https://tatakae.fit
+```
+
+**Important notes:**
+- `APPLE_CLIENT_IDS` must include all iOS Bundle IDs and the Web Services ID (when confirmed)
+- `CORS_ALLOWED_ORIGINS` should only include `https://tatakae.fit` in production
+- Database credentials are never committed to the repository
+
+### Deployment Steps
+
+1. **Clone the repository on the VPS:**
+
+```bash
+ssh jacob@13.140.40.40
+git clone https://github.com/yeikobu/tatakae-api.git
+cd tatakae-api
+```
+
+2. **Configure environment variables:**
+
+```bash
+cp .env.example .env
+nano .env  # Edit with your actual values
+```
+
+3. **Start the production stack:**
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+This will:
+- Build the API Docker image from the Dockerfile
+- Start PostgreSQL on the internal Docker network only (not published to host)
+- Start the API service connected to Postgres
+- Start Caddy reverse proxy with automatic HTTPS for `api.tatakae.fit`
+- Run Flyway migrations automatically on API startup
+
+4. **Verify the deployment:**
+
+```bash
+# Check all services are running
+docker compose -f docker-compose.prod.yml ps
+
+# Check API health
+curl https://api.tatakae.fit/healthcheck
+
+# View logs
+docker compose -f docker-compose.prod.yml logs -f api
+```
+
+### Security Notes
+
+**⚠️ IMPORTANT: Firewall Configuration**
+
+- **DO NOT open ufw ports 80/443 until the Caddy container is running and ready to bind them**
+- **NEVER publish PostgreSQL port 5432 to the host** - the database must stay on the internal Docker network only
+
+When ready to expose the API:
+
+```bash
+# Only after Caddy is running successfully
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw reload
+```
+
+To stop allowing HTTP/HTTPS traffic:
+
+```bash
+sudo ufw delete allow 80/tcp
+sudo ufw delete allow 443/tcp
+sudo ufw reload
+```
+
+### Database Migrations
+
+Flyway runs automatically when the API container starts. The database schema validation (`spring.jpa.hibernate.ddl-auto=validate`) ensures the schema matches the JPA entities without modifying the database.
+
+If you need to apply migrations manually:
+
+```bash
+docker compose -f docker-compose.prod.yml exec api ./mvnw flyway:migrate
+```
+
+### Updating the Deployment
+
+To deploy a new version:
+
+```bash
+git pull origin main
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Caddy will handle certificate renewal automatically (Let's Encrypt).
+
+### Architecture
+
+```
+Internet → Port 443 (HTTPS)
+           ↓
+       Caddy Reverse Proxy (automatic TLS)
+           ↓
+       Spring Boot API :8080 (internal network)
+           ↓
+       PostgreSQL :5432 (internal network only)
+```
+
+- **Public:** `api.tatakae.fit` (HTTPS via Caddy)
+- **Internal:** API → Postgres (Docker bridge network)
+- **Note:** The landing page lives at `https://tatakae.fit/ranking` (Astro, separate repository)
+
+---
+
 ![Java](https://img.shields.io/badge/Java-21-orange.svg)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-brightgreen.svg)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue.svg)
