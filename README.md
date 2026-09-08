@@ -123,7 +123,7 @@ The production setup uses Docker Compose with three services: PostgreSQL (intern
 ### Prerequisites
 
 - Docker and Docker Compose installed on the VPS
-- DNS A record: `api.tatakae.fit` → `13.140.40.40` (already configured)
+- DNS A record: `api.tatakae.fit` → VPS (already configured)
 - ufw firewall configured (see security notes below)
 
 ### Production Environment Variables
@@ -156,7 +156,7 @@ CORS_ALLOWED_ORIGINS=https://tatakae.fit
 1. **Clone the repository on the VPS:**
 
 ```bash
-ssh jacob@13.140.40.40
+ssh jacob@api.tatakae.fit
 git clone https://github.com/yeikobu/tatakae-api.git
 cd tatakae-api
 ```
