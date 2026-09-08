@@ -1,0 +1,44 @@
+# Docker build context ignore file
+# Exclude files that don't need to be in the Docker image
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea
+.vscode
+*.iml
+.settings
+.project
+.classpath
+
+# Build artifacts (will be built inside the container)
+target/
+build/
+
+# Environment files
+.env
+.env.example
+.env.local
+
+# Documentation
+*.md
+LICENSE
+SECURITY.md
+
+# Test reports
+*.log
+
+# Docker files
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Bruno API tests
+bruno/
+
+# OS files
+.DS_Store
+Thumbs.db
