@@ -13,6 +13,10 @@ public class FindOrCreateUserByAppleSubUseCase {
         this.userRepository = userRepository;
     }
 
+    public boolean exists(String appleSub) {
+        return userRepository.findByAppleSub(appleSub).isPresent();
+    }
+
     public User execute(String appleSub) {
         return userRepository.findByAppleSub(appleSub)
                 .orElseGet(() -> createDefaultUser(appleSub));
