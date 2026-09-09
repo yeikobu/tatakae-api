@@ -15,8 +15,12 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Date;
 
 @Component
@@ -34,6 +38,10 @@ public class AppleJwtValidator {
     }
 
     public AppleJwtClaims validate(String token) {
+        return validate(token, null);
+    }
+
+    public AppleJwtClaims validate(String token, String nonce) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
             JWTClaimsSet claimsSet = signedJWT.getJWTClaimsSet();
@@ -41,6 +49,7 @@ public class AppleJwtValidator {
             validateIssuer(claimsSet);
             validateAudience(claimsSet);
             validateExpiration(claimsSet);
+            validateNonce(claimsSet, nonce);
             validateSignature(signedJWT);
 
             String sub = claimsSet.getSubject();
@@ -83,6 +92,41 @@ public class AppleJwtValidator {
 
         if (expirationTime.before(new Date())) {
             throw new InvalidAppleJwtException("Token has expired");
+        }
+    }
+
+    private void validateNonce(JWTClaimsSet claimsSet, String expectedNonce) {
+        // If no nonce was provided by the client, skip validation
+        if (expectedNonce == null || expectedNonce.isEmpty()) {
+            return;
+        }
+
+        try {
+            String tokenNonce = claimsSet.getStringClaim("nonce");
+            if (tokenNonce == null) {
+                throw new InvalidAppleJwtException("Token missing nonce claim but nonce was expected");
+            }
+
+            // Apple stores SHA-256 hash of the raw nonce in the token
+            String expectedNonceHash = hashNonce(expectedNonce);
+            if (!expectedNonceHash.equals(tokenNonce)) {
+                throw new InvalidAppleJwtException("Nonce mismatch");
+            }
+
+            logger.debug("Nonce validated successfully");
+
+        } catch (ParseException e) {
+            throw new InvalidAppleJwtException("Failed to parse nonce claim", e);
+        }
+    }
+
+    private String hashNonce(String nonce) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(nonce.getBytes(StandardCharsets.UTF_8));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new InvalidAppleJwtException("SHA-256 algorithm not available", e);
         }
     }
 
