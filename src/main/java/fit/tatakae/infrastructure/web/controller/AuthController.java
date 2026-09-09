@@ -64,6 +64,12 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Not authenticated or invalid token")
     })
     public UserResponse me() {
+        if (!SecurityContextHelper.isAuthenticated()) {
+            throw new fit.tatakae.domain.exception.AuthenticationRequiredException(
+                "Authentication required: provide a valid Bearer token"
+            );
+        }
+        
         String authenticatedUserId = SecurityContextHelper.getAuthenticatedUserId();
         User user = getUserUseCase.execute(authenticatedUserId);
         return UserResponse.from(user);
