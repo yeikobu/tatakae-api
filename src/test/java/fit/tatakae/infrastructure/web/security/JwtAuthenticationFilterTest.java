@@ -46,11 +46,14 @@ public class JwtAuthenticationFilterTest {
     @Mock
     private FilterChain filterChain;
 
+    @Mock
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
     private AppleJwtAuthenticationFilter filter;
 
     @BeforeEach
     public void setUp() {
-        filter = new AppleJwtAuthenticationFilter(appleJwtValidator, findOrCreateUserByAppleSubUseCase);
+        filter = new AppleJwtAuthenticationFilter(appleJwtValidator, findOrCreateUserByAppleSubUseCase, objectMapper);
     }
 
     @Test

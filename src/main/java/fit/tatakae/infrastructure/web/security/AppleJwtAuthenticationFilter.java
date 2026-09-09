@@ -30,12 +30,14 @@ public class AppleJwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final AppleJwtValidator appleJwtValidator;
     private final FindOrCreateUserByAppleSubUseCase findOrCreateUserByAppleSubUseCase;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     public AppleJwtAuthenticationFilter(AppleJwtValidator appleJwtValidator,
-                                        FindOrCreateUserByAppleSubUseCase findOrCreateUserByAppleSubUseCase) {
+                                        FindOrCreateUserByAppleSubUseCase findOrCreateUserByAppleSubUseCase,
+                                        ObjectMapper objectMapper) {
         this.appleJwtValidator = appleJwtValidator;
         this.findOrCreateUserByAppleSubUseCase = findOrCreateUserByAppleSubUseCase;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -85,6 +87,25 @@ public class AppleJwtAuthenticationFilter extends OncePerRequestFilter {
                 path
         );
 
-        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+        try {
+            response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+        } catch (Exception e) {
+            logger.error("Failed to serialize ErrorResponse, falling back to minimal JSON", e);
+            // Fallback: write minimal JSON manually if serialization fails
+            String fallbackJson = String.format(
+                "{\"message\":\"%s\",\"code\":\"UNAUTHORIZED\",\"status\":401,\"path\":\"%s\"}",
+                escapeJson(message),
+                escapeJson(path)
+            );
+            response.getWriter().write(fallbackJson);
+        }
+    }
+
+    private String escapeJson(String value) {
+        if (value == null) return "";
+        return value.replace("\\", "\\\\")
+                   .replace("\"", "\\\"")
+                   .replace("\n", "\\n")
+                   .replace("\r", "\\r");
     }
 }
