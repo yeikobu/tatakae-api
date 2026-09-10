@@ -3,6 +3,7 @@ package fit.tatakae.infrastructure.web.controller;
 import fit.tatakae.application.usecase.*;
 import fit.tatakae.domain.exception.ForbiddenOperationException;
 import fit.tatakae.infrastructure.web.dto.CreateUserRequest;
+import fit.tatakae.infrastructure.web.dto.FriendResponse;
 import fit.tatakae.infrastructure.web.dto.FriendshipResponse;
 import fit.tatakae.infrastructure.web.dto.UpdateUserRequest;
 import fit.tatakae.infrastructure.web.dto.UserResponse;
@@ -130,8 +131,8 @@ public class UserController {
             @ApiResponse(responseCode = "200", description = "Friends returned"),
             @ApiResponse(responseCode = "404", description = "Athlete not found")
     })
-    public List<UserResponse> friends(@PathVariable String userId) {
-        return listFriendsUseCase.execute(userId).stream().map(UserResponse::from).toList();
+    public List<FriendResponse> friends(@PathVariable String userId) {
+        return listFriendsUseCase.execute(userId).stream().map(FriendResponse::from).toList();
     }
 
     @GetMapping("/{userId}/friend-requests")
