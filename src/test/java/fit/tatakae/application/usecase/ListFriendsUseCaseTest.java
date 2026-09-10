@@ -50,10 +50,14 @@ public class ListFriendsUseCaseTest {
         when(userRepository.findById(TestUsers.idOf("user_2"))).thenReturn(Optional.of(friendOfIncomingRequest));
 
         // Act
-        List<User> friends = useCase.execute(TestUsers.idOf("user_1"));
+        List<AcceptedFriend> friends = useCase.execute(TestUsers.idOf("user_1"));
 
         // Assert
-        assertEquals(List.of(friendOfOutgoingRequest, friendOfIncomingRequest), friends);
+        assertEquals(2, friends.size());
+        assertEquals(outgoing.getId(), friends.get(0).friendshipId());
+        assertEquals(friendOfOutgoingRequest, friends.get(0).friend());
+        assertEquals(incoming.getId(), friends.get(1).friendshipId());
+        assertEquals(friendOfIncomingRequest, friends.get(1).friend());
     }
 
     @Test
@@ -66,7 +70,7 @@ public class ListFriendsUseCaseTest {
         when(userRepository.findById(TestUsers.idOf("user_3"))).thenReturn(Optional.empty());
 
         // Act
-        List<User> friends = useCase.execute(TestUsers.idOf("user_1"));
+        List<AcceptedFriend> friends = useCase.execute(TestUsers.idOf("user_1"));
 
         // Assert
         assertTrue(friends.isEmpty());

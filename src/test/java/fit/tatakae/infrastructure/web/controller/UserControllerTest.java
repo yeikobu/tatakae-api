@@ -13,7 +13,9 @@ import fit.tatakae.infrastructure.web.dto.CreateUserRequest;
 import fit.tatakae.infrastructure.web.dto.UpdateUserRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import fit.tatakae.infrastructure.web.security.jwt.AppleJwtValidator;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -30,6 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(UserController.class)
+@AutoConfigureMockMvc(addFilters = false)
 public class UserControllerTest {
 
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-08-28T10:00:00Z"), ZoneOffset.UTC);
@@ -56,6 +59,10 @@ public class UserControllerTest {
     private ListFriendsUseCase listFriendsUseCase;
     @MockitoBean
     private ListFriendRequestsUseCase listFriendRequestsUseCase;
+    @MockitoBean
+    private AppleJwtValidator appleJwtValidator;
+    @MockitoBean
+    private FindOrCreateUserByAppleSubUseCase findOrCreateUserByAppleSubUseCase;
 
     @Test
     public void shouldRegisterAUserAndReturnCreated() throws Exception {
@@ -179,11 +186,14 @@ public class UserControllerTest {
     public void shouldListTheFriendsOfAUser() throws Exception {
         // Arrange
         when(listFriendsUseCase.execute("user_1"))
-                .thenReturn(List.of(TestUsers.user("friend", "cl", PrivacyLevel.PUBLIC)));
+                .thenReturn(List.of(new AcceptedFriend(
+                        "friendship-1",
+                        TestUsers.user("friend", "cl", PrivacyLevel.PUBLIC))));
 
         // Act and Assert
         mockMvc.perform(get("/api/v1/users/user_1/friends"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].friendshipId").value("friendship-1"))
                 .andExpect(jsonPath("$[0].username").value("friend"));
     }
 

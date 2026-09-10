@@ -1,6 +1,5 @@
 package fit.tatakae.application.usecase;
 
-import fit.tatakae.domain.entity.User;
 import fit.tatakae.domain.exception.ResourceNotFoundException;
 import fit.tatakae.domain.repository.FriendshipRepository;
 import fit.tatakae.domain.repository.UserRepository;
@@ -18,14 +17,14 @@ public class ListFriendsUseCase {
         this.friendshipRepository = friendshipRepository;
     }
 
-    public List<User> execute(String userId) {
+    public List<AcceptedFriend> execute(String userId) {
         String identity = UserId.of(userId).asString();
         if (!userRepository.existsById(identity)) {
             throw new ResourceNotFoundException("User " + identity + " was not found");
         }
         return friendshipRepository.findAcceptedFor(identity).stream()
-                .map(friendship -> friendship.friendOf(identity))
-                .map(userRepository::findById)
+                .map(friendship -> userRepository.findById(friendship.friendOf(identity))
+                        .map(friend -> new AcceptedFriend(friendship.getId(), friend)))
                 .flatMap(Optional::stream)
                 .toList();
     }
