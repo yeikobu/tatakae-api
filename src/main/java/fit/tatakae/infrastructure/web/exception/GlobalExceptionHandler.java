@@ -1,6 +1,7 @@
 package fit.tatakae.infrastructure.web.exception;
 
 import fit.tatakae.domain.exception.*;
+import fit.tatakae.infrastructure.web.security.jwt.InvalidAppleJwtException;
 import fit.tatakae.infrastructure.web.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -50,6 +51,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationRequiredException.class)
     public ResponseEntity<ErrorResponse> handleAuthenticationRequired(AuthenticationRequiredException exception,
                                                                       HttpServletRequest request) {
+        return build(exception.getMessage(), "UNAUTHORIZED", HttpStatus.UNAUTHORIZED, request);
+    }
+
+    @ExceptionHandler(InvalidAppleJwtException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidAppleJwt(InvalidAppleJwtException exception,
+                                                               HttpServletRequest request) {
         return build(exception.getMessage(), "UNAUTHORIZED", HttpStatus.UNAUTHORIZED, request);
     }
 
