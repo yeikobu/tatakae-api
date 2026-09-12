@@ -1,4 +1,8 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
   application:
     name: tatakae-api
   profiles:
@@ -8,6 +12,10 @@ server:
   port: ${SERVER_PORT:8080}
 
 app:
+  avatar:
+    storage-dir: ${AVATAR_STORAGE_DIR:./data/avatars}
+    public-base-url: ${AVATAR_PUBLIC_BASE_URL:http://localhost:8080}
+    max-bytes: ${AVATAR_MAX_BYTES:2097152}
   apple:
     # Comma-separated list of Apple client IDs (iOS Bundle ID and Web Services ID)
     # Example: com.tatakae.ios,fit.tatakae.web

@@ -21,7 +21,9 @@ public record FriendResponse(
 
         @Schema(example = "cl") String country,
         @Schema(example = "PUBLIC") PrivacyLevel privacyLevel,
-        @Schema(example = "MALE") Gender gender) {
+        @Schema(example = "MALE") Gender gender,
+        @Schema(description = "Public URL of the friend avatar, or null", nullable = true)
+        String avatarUrl) {
 
     public static FriendResponse from(AcceptedFriend acceptedFriend) {
         var friend = acceptedFriend.friend();
@@ -31,6 +33,7 @@ public record FriendResponse(
                 friend.getUsername(),
                 friend.getCountry(),
                 friend.getPrivacyLevel(),
-                friend.getGender());
+                friend.getGender(),
+                friend.getAvatarUrl());
     }
 }
