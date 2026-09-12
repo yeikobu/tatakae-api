@@ -1,5 +1,10 @@
 package fit.tatakae.infrastructure.web.controller;
 
+import fit.tatakae.infrastructure.web.WebMvcSliceTestConfiguration;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
+
+
 import fit.tatakae.TestUsers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fit.tatakae.application.usecase.GetUserUseCase;
@@ -30,6 +35,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+@Import(WebMvcSliceTestConfiguration.class)
+@AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(TrainingSessionController.class)
 public class TrainingSessionControllerTest {
 

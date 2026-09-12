@@ -1,5 +1,10 @@
 package fit.tatakae.infrastructure.web.controller;
 
+import fit.tatakae.infrastructure.web.WebMvcSliceTestConfiguration;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
+
+
 import fit.tatakae.TestUsers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fit.tatakae.application.usecase.*;
@@ -13,7 +18,6 @@ import fit.tatakae.infrastructure.web.dto.CreateUserRequest;
 import fit.tatakae.infrastructure.web.dto.UpdateUserRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import fit.tatakae.infrastructure.web.security.jwt.AppleJwtValidator;
 import org.springframework.http.MediaType;
@@ -31,8 +35,9 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(UserController.class)
+@Import(WebMvcSliceTestConfiguration.class)
 @AutoConfigureMockMvc(addFilters = false)
+@WebMvcTest(UserController.class)
 public class UserControllerTest {
 
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-08-28T10:00:00Z"), ZoneOffset.UTC);

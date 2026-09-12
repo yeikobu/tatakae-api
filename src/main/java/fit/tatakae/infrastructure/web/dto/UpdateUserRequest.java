@@ -27,7 +27,7 @@ public record UpdateUserRequest(
         @NotNull(message = "privacyLevel is required")
         PrivacyLevel privacyLevel,
 
-        @Schema(description = "Category used by men and women leaderboards", example = "FEMALE")
+        @Schema(description = "Must match the gender chosen at registration; changes are rejected", example = "FEMALE")
         @NotNull(message = "gender is required")
         Gender gender) {
 }
