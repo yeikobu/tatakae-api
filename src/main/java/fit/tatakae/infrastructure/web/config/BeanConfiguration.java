@@ -1,6 +1,7 @@
 package fit.tatakae.infrastructure.web.config;
 
 import fit.tatakae.application.usecase.*;
+import fit.tatakae.domain.repository.AvatarStorage;
 import fit.tatakae.domain.repository.FriendshipRepository;
 import fit.tatakae.domain.repository.SessionRepository;
 import fit.tatakae.domain.repository.UserRepository;
@@ -111,4 +112,15 @@ public class BeanConfiguration {
     public FindOrCreateUserByAppleSubUseCase findOrCreateUserByAppleSubUseCase(UserRepository userRepository) {
         return new FindOrCreateUserByAppleSubUseCase(userRepository);
     }
+
+    @Bean
+    public UploadAvatarUseCase uploadAvatarUseCase(UserRepository userRepository, AvatarStorage avatarStorage) {
+        return new UploadAvatarUseCase(userRepository, avatarStorage);
+    }
+
+    @Bean
+    public DeleteAvatarUseCase deleteAvatarUseCase(UserRepository userRepository, AvatarStorage avatarStorage) {
+        return new DeleteAvatarUseCase(userRepository, avatarStorage);
+    }
+
 }

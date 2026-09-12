@@ -37,16 +37,21 @@ public class UserEntity {
     @Column(name = "apple_sub", unique = true)
     private String appleSub;
 
+    @Column(name = "avatar_url", length = 512)
+    private String avatarUrl;
+
     protected UserEntity() {
     }
 
-    public UserEntity(String id, String username, String country, PrivacyLevel privacyLevel, Gender gender, String appleSub) {
+    public UserEntity(String id, String username, String country, PrivacyLevel privacyLevel, Gender gender,
+                      String appleSub, String avatarUrl) {
         this.id = id;
         this.username = username;
         this.country = country;
         this.privacyLevel = privacyLevel;
         this.gender = gender;
         this.appleSub = appleSub;
+        this.avatarUrl = avatarUrl;
     }
 
     public String getId() {
@@ -71,5 +76,9 @@ public class UserEntity {
 
     public String getAppleSub() {
         return appleSub;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
     }
 }

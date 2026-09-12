@@ -13,7 +13,10 @@ public record UserResponse(
         @Schema(description = "Current public handle", example = "yeikobu") String username,
         @Schema(example = "cl") String country,
         @Schema(example = "PUBLIC") PrivacyLevel privacyLevel,
-        @Schema(example = "MALE") Gender gender) {
+        @Schema(example = "MALE") Gender gender,
+        @Schema(description = "Public URL of the profile avatar, or null when none",
+                example = "http://localhost:8080/avatars/3f2a9c1e-6b5d-4c8a-9f11-72d0e4a1b8c3.jpg",
+                nullable = true) String avatarUrl) {
 
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -21,6 +24,7 @@ public record UserResponse(
                 user.getUsername(),
                 user.getCountry(),
                 user.getPrivacyLevel(),
-                user.getGender());
+                user.getGender(),
+                user.getAvatarUrl());
     }
 }

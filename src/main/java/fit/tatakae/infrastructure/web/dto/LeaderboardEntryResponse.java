@@ -14,6 +14,8 @@ public record LeaderboardEntryResponse(
         String username,
         String country,
         Gender gender,
+        @Schema(description = "Public URL of the athlete avatar, or null", nullable = true)
+        String avatarUrl,
         int reps,
         Instant achievedAt) {
 
@@ -24,6 +26,7 @@ public record LeaderboardEntryResponse(
                 session.getUser().getUsername(),
                 session.getUser().getCountry(),
                 session.getUser().getGender(),
+                session.getUser().getAvatarUrl(),
                 session.getReps(),
                 session.getStart());
     }

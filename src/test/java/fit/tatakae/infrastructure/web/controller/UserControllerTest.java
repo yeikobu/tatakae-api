@@ -60,6 +60,10 @@ public class UserControllerTest {
     @MockitoBean
     private ListFriendRequestsUseCase listFriendRequestsUseCase;
     @MockitoBean
+    private UploadAvatarUseCase uploadAvatarUseCase;
+    @MockitoBean
+    private DeleteAvatarUseCase deleteAvatarUseCase;
+    @MockitoBean
     private AppleJwtValidator appleJwtValidator;
     @MockitoBean
     private FindOrCreateUserByAppleSubUseCase findOrCreateUserByAppleSubUseCase;

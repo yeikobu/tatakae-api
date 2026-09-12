@@ -10,38 +10,54 @@ public class User {
     private final PrivacyLevel privacyLevel;
     private final Gender gender;
     private final String appleSub;
+    private final String avatarUrl;
 
     // Reconstitution constructor: used when the athlete identity already exists (e.g. loaded from a repository).
     public User(String userId, String username, String country, PrivacyLevel privacyLevel, Gender gender) {
-        this(UserId.of(userId), new Username(username), country, privacyLevel, gender, null);
+        this(UserId.of(userId), new Username(username), country, privacyLevel, gender, null, null);
     }
 
     public User(String userId, String username, String country, PrivacyLevel privacyLevel, Gender gender, String appleSub) {
-        this(UserId.of(userId), new Username(username), country, privacyLevel, gender, appleSub);
+        this(UserId.of(userId), new Username(username), country, privacyLevel, gender, appleSub, null);
     }
 
-    private User(UserId userId, Username username, String country, PrivacyLevel privacyLevel, Gender gender, String appleSub) {
+    public User(String userId, String username, String country, PrivacyLevel privacyLevel, Gender gender,
+                String appleSub, String avatarUrl) {
+        this(UserId.of(userId), new Username(username), country, privacyLevel, gender, appleSub, avatarUrl);
+    }
+
+    private User(UserId userId, Username username, String country, PrivacyLevel privacyLevel, Gender gender,
+                 String appleSub, String avatarUrl) {
         this.userId = userId;
         this.username = username;
         this.country = country;
         this.privacyLevel = privacyLevel;
         this.gender = gender;
         this.appleSub = appleSub;
+        this.avatarUrl = avatarUrl;
     }
 
     // A brand new athlete: the identity is minted here, never accepted from the outside.
     public static User register(String username, String country, PrivacyLevel privacyLevel, Gender gender) {
-        return new User(UserId.generate(), new Username(username), country, privacyLevel, gender, null);
+        return new User(UserId.generate(), new Username(username), country, privacyLevel, gender, null, null);
     }
 
     // Register an athlete via Apple Sign In: the identity is minted here, and linked to the Apple sub.
     public static User registerWithApple(String appleSub, String username, String country, PrivacyLevel privacyLevel, Gender gender) {
-        return new User(UserId.generate(), new Username(username), country, privacyLevel, gender, appleSub);
+        return new User(UserId.generate(), new Username(username), country, privacyLevel, gender, appleSub, null);
     }
 
     // Profile changes, handle included, never touch the identity.
     public User updatedTo(String username, String country, PrivacyLevel privacyLevel, Gender gender) {
-        return new User(this.userId, new Username(username), country, privacyLevel, gender, this.appleSub);
+        return new User(this.userId, new Username(username), country, privacyLevel, gender, this.appleSub, this.avatarUrl);
+    }
+
+    public User withAvatarUrl(String avatarUrl) {
+        return new User(this.userId, this.username, this.country, this.privacyLevel, this.gender, this.appleSub, avatarUrl);
+    }
+
+    public User withoutAvatar() {
+        return withAvatarUrl(null);
     }
 
     public String getUserId() {
@@ -82,6 +98,10 @@ public class User {
 
     public String getAppleSub() {
         return this.appleSub;
+    }
+
+    public String getAvatarUrl() {
+        return this.avatarUrl;
     }
 
     @Override

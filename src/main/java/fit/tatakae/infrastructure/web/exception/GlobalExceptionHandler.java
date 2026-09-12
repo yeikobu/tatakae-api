@@ -62,6 +62,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             InvalidUserException.class,
+            InvalidAvatarException.class,
             InvalidFriendshipException.class,
             InconsistentSessionException.class,
             IllegalArgumentException.class

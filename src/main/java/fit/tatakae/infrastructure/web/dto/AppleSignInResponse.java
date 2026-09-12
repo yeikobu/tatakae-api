@@ -22,6 +22,9 @@ public record AppleSignInResponse(
         @Schema(description = "Gender (MALE, FEMALE, or UNSPECIFIED)")
         Gender gender,
 
+        @Schema(description = "Public URL of the profile avatar, or null", nullable = true)
+        String avatarUrl,
+
         @Schema(description = "Whether this athlete was created in this call (true) or already existed (false)")
         boolean created
 ) {
@@ -32,6 +35,7 @@ public record AppleSignInResponse(
                 user.getCountry(),
                 user.getPrivacyLevel(),
                 user.getGender(),
+                user.getAvatarUrl(),
                 created
         );
     }
