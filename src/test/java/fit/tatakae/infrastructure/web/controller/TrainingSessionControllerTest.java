@@ -17,7 +17,11 @@ import fit.tatakae.domain.exception.FraudulentSessionException;
 import fit.tatakae.domain.exception.InconsistentSessionException;
 import fit.tatakae.domain.exception.ResourceNotFoundException;
 import fit.tatakae.infrastructure.web.dto.CreateTrainingSessionRequest;
+import fit.tatakae.infrastructure.web.security.AuthenticatedUser;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -64,9 +68,24 @@ public class TrainingSessionControllerTest {
     @MockitoBean
     private GetUserUseCase getUserUseCase;
 
+    @BeforeEach
+    void clearSecurity() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @AfterEach
+    void clearSecurityAfter() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void authenticateAs(String userId) {
+        SecurityContextHolder.getContext().setAuthentication(new AuthenticatedUser(userId, "apple-sub"));
+    }
+
     @Test
     public void shouldRecordASessionAndReturnCreated() throws Exception {
         // Arrange
+        authenticateAs("user_1");
         User user = TestUsers.user("yeikobu", "cl", PrivacyLevel.PUBLIC);
         TrainingSession session = new TrainingSession(user, Exercise.PULL_UP, 20, START, END, CLOCK);
         when(getUserUseCase.execute("user_1")).thenReturn(user);
@@ -87,6 +106,7 @@ public class TrainingSessionControllerTest {
     @Test
     public void shouldReturnNotFoundWhenTheAthleteDoesNotExist() throws Exception {
         // Arrange
+        authenticateAs("ghost");
         when(getUserUseCase.execute("ghost")).thenThrow(new ResourceNotFoundException("User ghost was not found"));
         CreateTrainingSessionRequest request =
                 new CreateTrainingSessionRequest("ghost", Exercise.PULL_UP, 20, START, END);
@@ -101,6 +121,7 @@ public class TrainingSessionControllerTest {
     @Test
     public void shouldReturnUnprocessableEntityWhenTheSetLooksFraudulent() throws Exception {
         // Arrange
+        authenticateAs("user_1");
         User user = TestUsers.user("yeikobu", "cl", PrivacyLevel.PUBLIC);
         when(getUserUseCase.execute("user_1")).thenReturn(user);
         when(recordTrainingSessionUseCase.execute(any(), any(), anyInt(), any(), any(), any()))
@@ -119,6 +140,7 @@ public class TrainingSessionControllerTest {
     @Test
     public void shouldReturnBadRequestWhenTheTimeframeIsInconsistent() throws Exception {
         // Arrange
+        authenticateAs("user_1");
         User user = TestUsers.user("yeikobu", "cl", PrivacyLevel.PUBLIC);
         when(getUserUseCase.execute("user_1")).thenReturn(user);
         when(recordTrainingSessionUseCase.execute(any(), any(), anyInt(), any(), any(), any()))

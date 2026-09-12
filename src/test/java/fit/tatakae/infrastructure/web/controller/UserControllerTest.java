@@ -16,7 +16,11 @@ import fit.tatakae.domain.exception.DuplicateUserException;
 import fit.tatakae.domain.exception.ResourceNotFoundException;
 import fit.tatakae.infrastructure.web.dto.CreateUserRequest;
 import fit.tatakae.infrastructure.web.dto.UpdateUserRequest;
+import fit.tatakae.infrastructure.web.security.AuthenticatedUser;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import fit.tatakae.infrastructure.web.security.jwt.AppleJwtValidator;
@@ -72,6 +76,21 @@ public class UserControllerTest {
     private AppleJwtValidator appleJwtValidator;
     @MockitoBean
     private FindOrCreateUserByAppleSubUseCase findOrCreateUserByAppleSubUseCase;
+
+
+    @BeforeEach
+    void clearSecurity() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @AfterEach
+    void clearSecurityAfter() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void authenticateAs(String userId) {
+        SecurityContextHolder.getContext().setAuthentication(new AuthenticatedUser(userId, "apple-sub"));
+    }
 
     @Test
     public void shouldRegisterAUserAndReturnCreated() throws Exception {
@@ -171,6 +190,7 @@ public class UserControllerTest {
     @Test
     public void shouldUpdateAUser() throws Exception {
         // Arrange
+        authenticateAs(TestUsers.idOf("yeikobu"));
         when(updateUserUseCase.execute(TestUsers.idOf("yeikobu"), "kenshin", "us", PrivacyLevel.PRIVATE, Gender.FEMALE))
                 .thenReturn(new User(TestUsers.idOf("yeikobu"), "kenshin", "us", PrivacyLevel.PRIVATE, Gender.FEMALE));
         UpdateUserRequest request = new UpdateUserRequest("kenshin", "us", PrivacyLevel.PRIVATE, Gender.FEMALE);
@@ -185,6 +205,9 @@ public class UserControllerTest {
 
     @Test
     public void shouldDeleteAUser() throws Exception {
+        // Arrange
+        authenticateAs("user_1");
+
         // Act and Assert
         mockMvc.perform(delete("/api/v1/users/user_1"))
                 .andExpect(status().isNoContent());
@@ -280,6 +303,7 @@ public class UserControllerTest {
     @Test
     public void shouldReturnConflictWhenTheNewHandleBelongsToAnotherAthlete() throws Exception {
         // Arrange
+        authenticateAs(TestUsers.idOf("yeikobu"));
         when(updateUserUseCase.execute(anyString(), anyString(), anyString(), any(), any()))
                 .thenThrow(new DuplicateUserException("Username kenshin is already taken"));
         UpdateUserRequest request = new UpdateUserRequest("kenshin", "cl", PrivacyLevel.PUBLIC, Gender.MALE);

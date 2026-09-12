@@ -27,6 +27,8 @@ import java.io.StringWriter;
 import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -216,5 +218,75 @@ public class JwtAuthenticationFilterTest {
         when(request.getHeader("Authorization")).thenReturn(null);
         when(request.getRequestURI()).thenReturn(null);
         assertTrue(filter.extractToken(request) == null);
+    }
+
+    @Test
+    public void shouldReturn401WhenAuthenticationThrowsUnexpectedException() throws Exception {
+        when(request.getHeader("Authorization")).thenReturn("Bearer weird.token");
+        when(request.getRequestURI()).thenReturn("/api/v1/events");
+        when(appleJwtValidator.validate("weird.token")).thenThrow(new RuntimeException("jwks down"));
+
+        StringWriter writer = new StringWriter();
+        when(response.getWriter()).thenReturn(new PrintWriter(writer));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(response).setStatus(401);
+        verify(filterChain, never()).doFilter(request, response);
+        assertTrue(writer.toString().contains("Authentication failed") || writer.toString().contains("UNAUTHORIZED"));
+    }
+
+    @Test
+    public void shouldIgnoreAuthorizationHeaderThatIsNotBearer() throws Exception {
+        when(request.getHeader("Authorization")).thenReturn("Basic abc");
+        when(request.getRequestURI()).thenReturn("/api/v1/users");
+
+        assertTrue(filter.extractToken(request) == null);
+        filter.doFilterInternal(request, response, filterChain);
+        verify(filterChain).doFilter(request, response);
+        verify(appleJwtValidator, never()).validate(anyString());
+    }
+
+    @Test
+    public void shouldIgnoreNullAccessTokenOnEventsEndpoint() throws Exception {
+        when(request.getHeader("Authorization")).thenReturn(null);
+        when(request.getRequestURI()).thenReturn("/api/v1/events");
+        when(request.getParameter("access_token")).thenReturn(null);
+
+        assertTrue(filter.extractToken(request) == null);
+    }
+
+    @Test
+    public void shouldWriteUnauthorizedJsonWhenObjectMapperSucceeds() throws Exception {
+        when(request.getHeader("Authorization")).thenReturn("Bearer bad");
+        when(request.getRequestURI()).thenReturn("/api/v1/users/test");
+        when(appleJwtValidator.validate("bad")).thenThrow(
+                new fit.tatakae.infrastructure.web.security.jwt.InvalidAppleJwtException("nope"));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"code\":\"UNAUTHORIZED\"}");
+
+        StringWriter writer = new StringWriter();
+        when(response.getWriter()).thenReturn(new PrintWriter(writer));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        assertTrue(writer.toString().contains("UNAUTHORIZED"));
+        verify(objectMapper).writeValueAsString(any());
+    }
+
+    @Test
+    public void escapeJsonHandlesNullViaFallbackPath() throws Exception {
+        when(request.getHeader("Authorization")).thenReturn("Bearer bad");
+        when(request.getRequestURI()).thenReturn(null);
+        when(appleJwtValidator.validate("bad")).thenThrow(
+                new fit.tatakae.infrastructure.web.security.jwt.InvalidAppleJwtException("nope"));
+        when(objectMapper.writeValueAsString(any())).thenThrow(new RuntimeException("ser fail"));
+
+        StringWriter writer = new StringWriter();
+        when(response.getWriter()).thenReturn(new PrintWriter(writer));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        assertTrue(writer.toString().contains("UNAUTHORIZED"));
+        assertTrue(writer.toString().contains("\"path\":\"\""));
     }
 }

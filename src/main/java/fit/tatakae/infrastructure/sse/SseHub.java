@@ -52,7 +52,7 @@ public class SseHub {
     }
 
     public SseEmitter subscribe(String userId) {
-        SseEmitter emitter = new SseEmitter(EMITTER_TIMEOUT_MS);
+        SseEmitter emitter = createEmitter();
         emittersByUser.computeIfAbsent(userId, ignored -> new CopyOnWriteArraySet<>()).add(emitter);
 
         Runnable cleanup = () -> removeEmitter(userId, emitter);
@@ -60,11 +60,9 @@ public class SseHub {
         emitter.onTimeout(cleanup);
         emitter.onError(error -> cleanup.run());
 
-        try {
-            emitter.send(SseEmitter.event()
-                    .name("connected")
-                    .data("{\"ok\":true}", MediaType.APPLICATION_JSON));
-        } catch (IOException exception) {
+        if (!sendSafely(emitter, SseEmitter.event()
+                .name("connected")
+                .data("{\"ok\":true}", MediaType.APPLICATION_JSON))) {
             cleanup.run();
         }
 
@@ -87,11 +85,9 @@ public class SseHub {
         }
 
         for (SseEmitter emitter : emitters) {
-            try {
-                emitter.send(SseEmitter.event()
-                        .name(eventName)
-                        .data(json, MediaType.APPLICATION_JSON));
-            } catch (IOException | IllegalStateException exception) {
+            if (!sendSafely(emitter, SseEmitter.event()
+                    .name(eventName)
+                    .data(json, MediaType.APPLICATION_JSON))) {
                 removeEmitter(userId, emitter);
             }
         }
@@ -117,6 +113,22 @@ public class SseHub {
         return emittersByUser.size();
     }
 
+    /**
+     * Sends an SSE frame; returns false when the emitter is dead so callers can unregister it.
+     */
+    SseEmitter createEmitter() {
+        return new SseEmitter(EMITTER_TIMEOUT_MS);
+    }
+
+    boolean sendSafely(SseEmitter emitter, SseEmitter.SseEventBuilder event) {
+        try {
+            emitter.send(event);
+            return true;
+        } catch (IOException | IllegalStateException exception) {
+            return false;
+        }
+    }
+
     void removeEmitter(String userId, SseEmitter emitter) {
         Set<SseEmitter> emitters = emittersByUser.get(userId);
         if (emitters == null) {
@@ -137,9 +149,7 @@ public class SseHub {
     void sendHeartbeats() {
         emittersByUser.forEach((userId, emitters) -> {
             for (SseEmitter emitter : emitters) {
-                try {
-                    emitter.send(SseEmitter.event().comment("keepalive"));
-                } catch (IOException | IllegalStateException exception) {
+                if (!sendSafely(emitter, SseEmitter.event().comment("keepalive"))) {
                     removeEmitter(userId, emitter);
                 }
             }

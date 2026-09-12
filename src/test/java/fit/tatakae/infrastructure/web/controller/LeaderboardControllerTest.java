@@ -12,7 +12,11 @@ import fit.tatakae.domain.entity.Gender;
 import fit.tatakae.domain.entity.PrivacyLevel;
 import fit.tatakae.domain.entity.TrainingSession;
 import fit.tatakae.domain.entity.User;
+import fit.tatakae.infrastructure.web.security.AuthenticatedUser;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -41,6 +45,21 @@ public class LeaderboardControllerTest {
     @MockitoBean
     private GetLeaderboardUseCase getLeaderboardUseCase;
 
+    @BeforeEach
+    void clearSecurity() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @AfterEach
+    void clearSecurityAfter() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void authenticateAs(String userId) {
+        SecurityContextHolder.getContext().setAuthentication(new AuthenticatedUser(userId, "apple-sub"));
+    }
+
+
     private TrainingSession sessionOf(String username, int reps) {
         User user = TestUsers.user(username, "cl", PrivacyLevel.PUBLIC);
         return new TrainingSession(user, Exercise.PULL_UP, reps, START, START.plusSeconds(60), CLOCK);
@@ -52,10 +71,10 @@ public class LeaderboardControllerTest {
         when(getLeaderboardUseCase.executeGlobal(Exercise.PULL_UP, null)).thenReturn(List.of());
 
         // Act and Assert
+        // CORS filter is disabled in this WebMvc slice (addFilters=false); full CORS is covered by SecurityConfig.
         mockMvc.perform(get("/api/v1/leaderboards/PULL_UP")
                         .header("Origin", "http://localhost:5173"))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -100,11 +119,12 @@ public class LeaderboardControllerTest {
     @Test
     public void shouldReturnTheFriendsRanking() throws Exception {
         // Arrange
+        authenticateAs(TestUsers.idOf("first"));
         when(getLeaderboardUseCase.executeByFriends(Exercise.PULL_UP, TestUsers.idOf("first"), null))
                 .thenReturn(List.of(sessionOf("first", 20)));
 
-        // Act and Assert
-        mockMvc.perform(get("/api/v1/leaderboards/PULL_UP").param("scope", "friends").param("userId", TestUsers.idOf("first")))
+        // Act and Assert — FRIENDS scope uses the authenticated principal, never a userId query param
+        mockMvc.perform(get("/api/v1/leaderboards/PULL_UP").param("scope", "friends"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].userId").value(TestUsers.idOf("first")));
     }
@@ -118,12 +138,11 @@ public class LeaderboardControllerTest {
     }
 
     @Test
-    public void shouldReturnBadRequestWhenTheFriendsScopeHasNoUser() throws Exception {
-        // Act and Assert
-        mockMvc.perform(get("/api/v1/leaderboards/PULL_UP").param("scope", "FRIENDS").param("userId", " "))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message")
-                        .value("Parameter userId is required when the scope is FRIENDS"));
+    public void shouldReturnUnauthorizedWhenFriendsScopeHasNoAuthentication() throws Exception {
+        // Act and Assert — FRIENDS ranking requires an authenticated athlete
+        mockMvc.perform(get("/api/v1/leaderboards/PULL_UP").param("scope", "FRIENDS"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
 
     @Test

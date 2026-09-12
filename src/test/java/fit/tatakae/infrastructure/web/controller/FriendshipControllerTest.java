@@ -17,6 +17,10 @@ import fit.tatakae.domain.exception.InvalidFriendshipTransitionException;
 import fit.tatakae.domain.exception.ResourceNotFoundException;
 import fit.tatakae.domain.exception.SelfFriendshipException;
 import fit.tatakae.infrastructure.web.dto.CreateFriendshipRequest;
+import fit.tatakae.infrastructure.web.security.AuthenticatedUser;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.security.core.context.SecurityContextHolder;
 import fit.tatakae.infrastructure.web.dto.UpdateFriendshipRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,9 +60,25 @@ public class FriendshipControllerTest {
     @MockitoBean
     private RemoveFriendshipUseCase removeFriendshipUseCase;
 
+    @BeforeEach
+    void clearSecurity() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @AfterEach
+    void clearSecurityAfter() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void authenticateAs(String userId) {
+        SecurityContextHolder.getContext().setAuthentication(new AuthenticatedUser(userId, "apple-sub"));
+    }
+
+
     @Test
     public void shouldCreateAPendingRequestAndReturnCreated() throws Exception {
         // Arrange
+        authenticateAs("user_1");
         Friendship pending = new Friendship(TestUsers.idOf("user_1"), TestUsers.idOf("user_2"), CLOCK);
         when(sendFriendRequestUseCase.execute("user_1", "user_2")).thenReturn(pending);
         CreateFriendshipRequest request = new CreateFriendshipRequest("user_1", "user_2");
@@ -76,6 +96,7 @@ public class FriendshipControllerTest {
     @Test
     public void shouldReturnUnprocessableEntityWhenAUserBefriendsItself() throws Exception {
         // Arrange
+        authenticateAs("user_1");
         when(sendFriendRequestUseCase.execute(anyString(), anyString()))
                 .thenThrow(new SelfFriendshipException("A user cannot befriend itself"));
         CreateFriendshipRequest request = new CreateFriendshipRequest("user_1", "user_1");
@@ -91,6 +112,7 @@ public class FriendshipControllerTest {
     @Test
     public void shouldReturnConflictWhenTheRelationAlreadyExists() throws Exception {
         // Arrange
+        authenticateAs("user_1");
         when(sendFriendRequestUseCase.execute(anyString(), anyString()))
                 .thenThrow(new DuplicateFriendshipException("A friendship already exists"));
         CreateFriendshipRequest request = new CreateFriendshipRequest("user_1", "user_2");
@@ -106,6 +128,7 @@ public class FriendshipControllerTest {
     @Test
     public void shouldReturnNotFoundWhenOneAthleteDoesNotExist() throws Exception {
         // Arrange
+        authenticateAs("ghost");
         when(sendFriendRequestUseCase.execute(anyString(), anyString()))
                 .thenThrow(new ResourceNotFoundException("User ghost was not found"));
         CreateFriendshipRequest request = new CreateFriendshipRequest("ghost", "user_2");
@@ -121,6 +144,7 @@ public class FriendshipControllerTest {
     @Test
     public void shouldReturnBadRequestWhenTheRequesterIsMissing() throws Exception {
         // Arrange
+        authenticateAs("user_1");
         CreateFriendshipRequest request = new CreateFriendshipRequest("", "user_2");
 
         // Act and Assert
@@ -146,14 +170,17 @@ public class FriendshipControllerTest {
     @Test
     public void shouldAcceptAPendingRequest() throws Exception {
         // Arrange
+        authenticateAs(TestUsers.idOf("user_2"));
+        Friendship pending = new Friendship(TestUsers.idOf("user_1"), TestUsers.idOf("user_2"), CLOCK);
         Friendship accepted = new Friendship(TestUsers.idOf("user_1"), TestUsers.idOf("user_2"), CLOCK);
         accepted.accept();
-        when(respondFriendRequestUseCase.accept(accepted.getId())).thenReturn(accepted);
+        when(getFriendshipUseCase.execute(pending.getId())).thenReturn(pending);
+        when(respondFriendRequestUseCase.accept(pending.getId())).thenReturn(accepted);
         UpdateFriendshipRequest request =
                 new UpdateFriendshipRequest(UpdateFriendshipRequest.FriendshipAnswer.ACCEPTED);
 
         // Act and Assert
-        mockMvc.perform(patch("/api/v1/friendships/" + accepted.getId())
+        mockMvc.perform(patch("/api/v1/friendships/" + pending.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -164,14 +191,17 @@ public class FriendshipControllerTest {
     @Test
     public void shouldRejectAPendingRequest() throws Exception {
         // Arrange
+        authenticateAs(TestUsers.idOf("user_2"));
+        Friendship pending = new Friendship(TestUsers.idOf("user_1"), TestUsers.idOf("user_2"), CLOCK);
         Friendship rejected = new Friendship(TestUsers.idOf("user_1"), TestUsers.idOf("user_2"), CLOCK);
         rejected.reject();
-        when(respondFriendRequestUseCase.reject(rejected.getId())).thenReturn(rejected);
+        when(getFriendshipUseCase.execute(pending.getId())).thenReturn(pending);
+        when(respondFriendRequestUseCase.reject(pending.getId())).thenReturn(rejected);
         UpdateFriendshipRequest request =
                 new UpdateFriendshipRequest(UpdateFriendshipRequest.FriendshipAnswer.REJECTED);
 
         // Act and Assert
-        mockMvc.perform(patch("/api/v1/friendships/" + rejected.getId())
+        mockMvc.perform(patch("/api/v1/friendships/" + pending.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -182,6 +212,9 @@ public class FriendshipControllerTest {
     @Test
     public void shouldReturnUnprocessableEntityWhenTheRequestWasAlreadyAnswered() throws Exception {
         // Arrange
+        authenticateAs(TestUsers.idOf("user_2"));
+        Friendship pending = new Friendship(TestUsers.idOf("user_1"), TestUsers.idOf("user_2"), CLOCK);
+        when(getFriendshipUseCase.execute("friendship-1")).thenReturn(pending);
         when(respondFriendRequestUseCase.accept(anyString()))
                 .thenThrow(new InvalidFriendshipTransitionException("Only a pending request can be accepted"));
         UpdateFriendshipRequest request =
@@ -197,6 +230,11 @@ public class FriendshipControllerTest {
 
     @Test
     public void shouldRemoveAFriendship() throws Exception {
+        // Arrange
+        authenticateAs(TestUsers.idOf("user_1"));
+        Friendship friendship = new Friendship(TestUsers.idOf("user_1"), TestUsers.idOf("user_2"), CLOCK);
+        when(getFriendshipUseCase.execute("friendship-1")).thenReturn(friendship);
+
         // Act and Assert
         mockMvc.perform(delete("/api/v1/friendships/friendship-1"))
                 .andExpect(status().isNoContent());
@@ -206,8 +244,9 @@ public class FriendshipControllerTest {
     @Test
     public void shouldReturnNotFoundWhenRemovingAnUnknownFriendship() throws Exception {
         // Arrange
-        doThrow(new ResourceNotFoundException("Friendship ghost was not found"))
-                .when(removeFriendshipUseCase).execute("ghost");
+        authenticateAs(TestUsers.idOf("user_1"));
+        when(getFriendshipUseCase.execute("ghost"))
+                .thenThrow(new ResourceNotFoundException("Friendship ghost was not found"));
 
         // Act and Assert
         mockMvc.perform(delete("/api/v1/friendships/ghost"))
