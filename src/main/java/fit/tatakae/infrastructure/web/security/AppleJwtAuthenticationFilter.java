@@ -27,6 +27,8 @@ public class AppleJwtAuthenticationFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(AppleJwtAuthenticationFilter.class);
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String ACCESS_TOKEN_QUERY_PARAM = "access_token";
+    private static final String EVENTS_PATH_PREFIX = "/api/v1/events";
 
     private final AppleJwtValidator appleJwtValidator;
     private final FindOrCreateUserByAppleSubUseCase findOrCreateUserByAppleSubUseCase;
@@ -45,11 +47,9 @@ public class AppleJwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER);
+        String token = extractToken(request);
 
-        if (authorizationHeader != null && authorizationHeader.startsWith(BEARER_PREFIX)) {
-            String token = authorizationHeader.substring(BEARER_PREFIX.length());
-
+        if (token != null) {
             try {
                 AppleJwtClaims claims = appleJwtValidator.validate(token);
                 User user = findOrCreateUserByAppleSubUseCase.execute(claims.sub());
@@ -61,12 +61,12 @@ public class AppleJwtAuthenticationFilter extends OncePerRequestFilter {
 
             } catch (InvalidAppleJwtException e) {
                 logger.warn("Invalid Apple JWT: {}", e.getMessage());
-                sendUnauthorizedResponse(response, request.getRequestURI(), 
+                sendUnauthorizedResponse(response, request.getRequestURI(),
                     "Invalid or expired authentication token: " + e.getMessage());
                 return;
             } catch (Exception e) {
                 logger.error("Error during authentication", e);
-                sendUnauthorizedResponse(response, request.getRequestURI(), 
+                sendUnauthorizedResponse(response, request.getRequestURI(),
                     "Authentication failed");
                 return;
             }
@@ -75,7 +75,33 @@ public class AppleJwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private void sendUnauthorizedResponse(HttpServletResponse response, String path, String message) 
+    /**
+     * Prefer Authorization: Bearer. For EventSource clients that cannot set headers,
+     * allow ?access_token= on the SSE endpoint only (avoids leaking tokens on other URLs via logs/referrers).
+     */
+    String extractToken(HttpServletRequest request) {
+        String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER);
+        if (authorizationHeader != null && authorizationHeader.startsWith(BEARER_PREFIX)) {
+            return authorizationHeader.substring(BEARER_PREFIX.length());
+        }
+        if (isEventsPath(request)) {
+            String accessToken = request.getParameter(ACCESS_TOKEN_QUERY_PARAM);
+            if (accessToken != null && !accessToken.isBlank()) {
+                return accessToken;
+            }
+        }
+        return null;
+    }
+
+    private boolean isEventsPath(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        if (path == null) {
+            return false;
+        }
+        return path.equals(EVENTS_PATH_PREFIX) || path.startsWith(EVENTS_PATH_PREFIX + "/");
+    }
+
+    private void sendUnauthorizedResponse(HttpServletResponse response, String path, String message)
             throws IOException {
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -91,7 +117,6 @@ public class AppleJwtAuthenticationFilter extends OncePerRequestFilter {
             response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
         } catch (Exception e) {
             logger.error("Failed to serialize ErrorResponse, falling back to minimal JSON", e);
-            // Fallback: write minimal JSON manually if serialization fails
             String fallbackJson = String.format(
                 "{\"message\":\"%s\",\"code\":\"UNAUTHORIZED\",\"status\":401,\"path\":\"%s\"}",
                 escapeJson(message),

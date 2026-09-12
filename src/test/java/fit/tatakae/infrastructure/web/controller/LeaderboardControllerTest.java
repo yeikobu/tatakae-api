@@ -1,5 +1,10 @@
 package fit.tatakae.infrastructure.web.controller;
 
+import fit.tatakae.infrastructure.web.WebMvcSliceTestConfiguration;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
+
+
 import fit.tatakae.TestUsers;
 import fit.tatakae.application.usecase.GetLeaderboardUseCase;
 import fit.tatakae.domain.entity.Exercise;
@@ -22,6 +27,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+@Import(WebMvcSliceTestConfiguration.class)
+@AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(LeaderboardController.class)
 public class LeaderboardControllerTest {
 

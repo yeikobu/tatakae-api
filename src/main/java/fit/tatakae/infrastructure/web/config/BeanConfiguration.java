@@ -1,5 +1,6 @@
 package fit.tatakae.infrastructure.web.config;
 
+import fit.tatakae.application.port.UserEventPublisher;
 import fit.tatakae.application.usecase.*;
 import fit.tatakae.domain.repository.AvatarStorage;
 import fit.tatakae.domain.repository.FriendshipRepository;
@@ -66,13 +67,16 @@ public class BeanConfiguration {
     @Bean
     public SendFriendRequestUseCase sendFriendRequestUseCase(UserRepository userRepository,
                                                              FriendshipRepository friendshipRepository,
-                                                             FriendshipService friendshipService) {
-        return new SendFriendRequestUseCase(userRepository, friendshipRepository, friendshipService);
+                                                             FriendshipService friendshipService,
+                                                             UserEventPublisher userEventPublisher) {
+        return new SendFriendRequestUseCase(userRepository, friendshipRepository, friendshipService, userEventPublisher);
     }
 
     @Bean
-    public RespondFriendRequestUseCase respondFriendRequestUseCase(FriendshipRepository friendshipRepository) {
-        return new RespondFriendRequestUseCase(friendshipRepository);
+    public RespondFriendRequestUseCase respondFriendRequestUseCase(FriendshipRepository friendshipRepository,
+                                                                   UserRepository userRepository,
+                                                                   UserEventPublisher userEventPublisher) {
+        return new RespondFriendRequestUseCase(friendshipRepository, userRepository, userEventPublisher);
     }
 
     @Bean
@@ -98,8 +102,10 @@ public class BeanConfiguration {
     }
 
     @Bean
-    public RecordTrainingSessionUseCase recordTrainingSessionUseCase(SessionRepository sessionRepository) {
-        return new RecordTrainingSessionUseCase(sessionRepository);
+    public RecordTrainingSessionUseCase recordTrainingSessionUseCase(SessionRepository sessionRepository,
+                                                                     FriendshipRepository friendshipRepository,
+                                                                     UserEventPublisher userEventPublisher) {
+        return new RecordTrainingSessionUseCase(sessionRepository, friendshipRepository, userEventPublisher);
     }
 
     @Bean

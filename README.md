@@ -239,6 +239,12 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 Caddy will handle certificate renewal automatically (Let's Encrypt).
 
+### Server-Sent Events (SSE)
+
+Real-time friend-request and leaderboard hints are available at `GET /api/v1/events`.
+See [docs/sse.md](docs/sse.md) for auth (Bearer + optional `access_token` query), event schemas, curl examples, and the Caddy `flush_interval -1` note for Contabo.
+
+
 ### Architecture
 
 ```
