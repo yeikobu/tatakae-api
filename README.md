@@ -379,7 +379,7 @@ erDiagram
     TRAINING_SESSIONS {
         string id PK "UUID of the set"
         string user_id FK "athlete that trained, references users.id"
-        string exercise "PUSH_UP, INCLINE_PUSH_UP, PIKE_PUSH_UP, DECLINED_PIKE_PUSH_UP, PULL_UP, CHIN_UP, AUSTRALIAN_PULL_UP, DIP, SQUAT, BURPEES or CRUNCH, checked by the database"
+        string exercise "counted rep exercise, CHECK constraint, see Counted exercises"
         int reps "repetitions counted on device"
         timestamptz started_at "start of the set"
         timestamptz ended_at "end of the set, always after the start"
@@ -388,9 +388,10 @@ erDiagram
 
 ### Table references and foreign keys
 
-The four enum columns are guarded by `CHECK` constraints that Hibernate derives from the Java
-enums, so an invalid `status`, `privacy_level`, `exercise` or `gender` cannot reach the table even through
-raw SQL.
+The four enum columns are guarded by `CHECK` constraints, so an invalid `status`, `privacy_level`,
+`exercise` or `gender` cannot reach the table even through raw SQL. `exercise` is
+`chk_training_sessions_exercise`: `V0` created it with the original five values and
+`V4__Expand_exercise_check` adds the six exercises the camera counts now.
 
 Referential integrity is enforced in two different places, on purpose:
 
@@ -427,14 +428,46 @@ Base path `/api/v1`.
 | DELETE | `/friendships/{id}` | 204 | Remove a friendship or cancel a request |
 | GET | `/users/{userId}/friends` | 200 | List accepted friends |
 | GET | `/users/{userId}/friend-requests?direction=incoming\|outgoing` | 200 | List pending requests |
-| POST | `/training-sessions` | 201 | Record a counted set |
-| GET | `/leaderboards/{exercise}?scope=GLOBAL\|COUNTRY\|FRIENDS&country=&userId=&gender=` | 200 | Ranking for one exercise |
+| POST | `/training-sessions` | 201 | Record a counted set. `exercise` is one of the values below |
+| GET | `/leaderboards/{exercise}?scope=GLOBAL\|COUNTRY\|FRIENDS&country=&userId=&gender=` | 200 | Ranking for one counted exercise |
 
 `/healthcheck` is the only management endpoint mapped over HTTP, and it sits outside `/api/v1`
 because it describes the service, not the domain. It is Spring Boot Actuator underneath, so it
 actually opens a connection to PostgreSQL instead of answering a hardcoded `UP`: if the database
 goes away the probe turns `DOWN` and answers 503, which is what makes it usable by a load balancer
 or an uptime monitor. Component details are shown under `dev` and hidden everywhere else.
+
+### Counted exercises
+
+`Exercise` lists the rep exercises the iOS camera already counts. The same names are accepted by
+`POST /training-sessions`, by `GET /leaderboards/{exercise}`, and by the `exercise` field of an
+SSE `leaderboard_update`. Chin-up is its own value, `CHIN_UP`, and is not stored as `PULL_UP`.
+
+| Value | Ceiling (reps) |
+|---|---|
+| `PUSH_UP` | 84 |
+| `INCLINE_PUSH_UP` | 112 |
+| `PIKE_PUSH_UP` | 45 |
+| `DECLINED_PIKE_PUSH_UP` | 32 |
+| `PULL_UP` | 77 |
+| `CHIN_UP` | 82 |
+| `AUSTRALIAN_PULL_UP` | 96 |
+| `DIP` | 119 |
+| `SQUAT` | 104 |
+| `BURPEES` | 50 |
+| `CRUNCH` | 120 |
+
+The ceiling is absolute. `TrainingSession` compares the set's reps to that number and does not
+multiply it by how long the set lasted. The ceiling itself is accepted; one rep over it is
+422 `BUSINESS_RULE_VIOLATION` (`FraudulentSessionException`).
+
+A name outside the enum is 400. A JSON body answers `MALFORMED_REQUEST`. The leaderboard path
+answers `INVALID_REQUEST`.
+
+Left out on purpose:
+
+- `PLANK`. The app measures a hold in seconds, and the ranking orders by reps.
+- `HANDSTAND_PUSH_UP` and `MUSCLE_UP`. They exist in the iOS catalog, and the camera menu does not offer them.
 
 ### Unified error contract
 
@@ -615,6 +648,15 @@ curl -i -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
   -d '{"username": "someone", "country": "cl", "privacyLevel": "SECRET", "gender": "MALE"}'
 
+# 400 MALFORMED_REQUEST, the set names an exercise the API does not count
+curl -i -X POST http://localhost:8080/api/v1/training-sessions \
+  -H "Content-Type: application/json" \
+  -d "{\"userId\": \"$USER_A\", \"exercise\": \"PLANK\", \"reps\": 20,
+       \"start\": \"2026-08-28T10:00:00Z\", \"end\": \"2026-08-28T10:01:00Z\"}"
+
+# 400 INVALID_REQUEST, the leaderboard path is not a counted exercise
+curl -i -X GET http://localhost:8080/api/v1/leaderboards/PLANK
+
 # 404 RESOURCE_NOT_FOUND, a well formed identity nobody owns
 curl -i -X GET http://localhost:8080/api/v1/users/00000000-0000-0000-0000-000000000000
 
@@ -640,10 +682,11 @@ curl -i -X PATCH "http://localhost:8080/api/v1/friendships/$FRIENDSHIP" \
   -H "Content-Type: application/json" \
   -d '{"status": "ACCEPTED"}'
 
-# 422 BUSINESS_RULE_VIOLATION, more reps than a human can do in that minute
+# 422 BUSINESS_RULE_VIOLATION, reps above that exercise's absolute ceiling
+# (PULL_UP rejects anything above 77, however long the set lasted)
 curl -i -X POST http://localhost:8080/api/v1/training-sessions \
   -H "Content-Type: application/json" \
-  -d "{\"userId\": \"$USER_A\", \"exercise\": \"PULL_UP\", \"reps\": 400,
+  -d "{\"userId\": \"$USER_A\", \"exercise\": \"PULL_UP\", \"reps\": 78,
        \"start\": \"2026-08-28T10:00:00Z\", \"end\": \"2026-08-28T10:01:00Z\"}"
 ```
 
