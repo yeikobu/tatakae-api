@@ -2,7 +2,9 @@ package fit.tatakae.infrastructure.web.config;
 
 import fit.tatakae.application.port.UserEventPublisher;
 import fit.tatakae.application.usecase.*;
+import fit.tatakae.application.port.SessionTokenIssuer;
 import fit.tatakae.domain.repository.AvatarStorage;
+import fit.tatakae.domain.repository.RefreshTokenRepository;
 import fit.tatakae.domain.repository.FriendshipRepository;
 import fit.tatakae.domain.repository.SessionRepository;
 import fit.tatakae.domain.repository.UserRepository;
@@ -122,6 +124,27 @@ public class BeanConfiguration {
     @Bean
     public UploadAvatarUseCase uploadAvatarUseCase(UserRepository userRepository, AvatarStorage avatarStorage) {
         return new UploadAvatarUseCase(userRepository, avatarStorage);
+    }
+
+
+    @Bean
+    public IssueSessionTokensUseCase issueSessionTokensUseCase(SessionTokenIssuer sessionTokenIssuer,
+                                                               RefreshTokenRepository refreshTokenRepository,
+                                                               Clock clock) {
+        return new IssueSessionTokensUseCase(sessionTokenIssuer, refreshTokenRepository, clock);
+    }
+
+    @Bean
+    public RefreshSessionTokensUseCase refreshSessionTokensUseCase(RefreshTokenRepository refreshTokenRepository,
+                                                                   IssueSessionTokensUseCase issueSessionTokensUseCase,
+                                                                   Clock clock) {
+        return new RefreshSessionTokensUseCase(refreshTokenRepository, issueSessionTokensUseCase, clock);
+    }
+
+    @Bean
+    public RevokeRefreshTokenUseCase revokeRefreshTokenUseCase(RefreshTokenRepository refreshTokenRepository,
+                                                               Clock clock) {
+        return new RevokeRefreshTokenUseCase(refreshTokenRepository, clock);
     }
 
     @Bean
