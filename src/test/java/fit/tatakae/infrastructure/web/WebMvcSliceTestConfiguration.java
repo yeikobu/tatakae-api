@@ -4,6 +4,7 @@ import fit.tatakae.application.port.UserEventPublisher;
 import fit.tatakae.application.usecase.FindOrCreateUserByAppleSubUseCase;
 import fit.tatakae.infrastructure.sse.SseHub;
 import fit.tatakae.infrastructure.storage.AvatarFileStorage;
+import fit.tatakae.application.port.SessionTokenIssuer;
 import fit.tatakae.infrastructure.web.security.jwt.AppleJwtValidator;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -50,5 +51,11 @@ public class WebMvcSliceTestConfiguration {
     @Primary
     FindOrCreateUserByAppleSubUseCase findOrCreateUserByAppleSubUseCase() {
         return Mockito.mock(FindOrCreateUserByAppleSubUseCase.class);
+    }
+
+    @Bean
+    @Primary
+    SessionTokenIssuer sessionTokenIssuer() {
+        return Mockito.mock(SessionTokenIssuer.class);
     }
 }

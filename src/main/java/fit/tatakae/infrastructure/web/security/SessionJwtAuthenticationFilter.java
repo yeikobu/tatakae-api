@@ -1,12 +1,9 @@
 package fit.tatakae.infrastructure.web.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import fit.tatakae.application.usecase.FindOrCreateUserByAppleSubUseCase;
-import fit.tatakae.domain.entity.User;
+import fit.tatakae.application.port.SessionTokenIssuer;
 import fit.tatakae.infrastructure.web.dto.ErrorResponse;
-import fit.tatakae.infrastructure.web.security.jwt.AppleJwtClaims;
-import fit.tatakae.infrastructure.web.security.jwt.AppleJwtValidator;
-import fit.tatakae.infrastructure.web.security.jwt.InvalidAppleJwtException;
+import fit.tatakae.infrastructure.web.security.jwt.InvalidSessionJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,25 +18,36 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+/**
+ * Authenticates requests with Tatakae session access JWTs (HS256).
+ * Apple identity tokens are only accepted in {@code POST /api/v1/auth/apple} body.
+ */
 @Component
-public class AppleJwtAuthenticationFilter extends OncePerRequestFilter {
+public class SessionJwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final Logger logger = LoggerFactory.getLogger(AppleJwtAuthenticationFilter.class);
+    private static final Logger logger = LoggerFactory.getLogger(SessionJwtAuthenticationFilter.class);
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String ACCESS_TOKEN_QUERY_PARAM = "access_token";
     private static final String EVENTS_PATH_PREFIX = "/api/v1/events";
 
-    private final AppleJwtValidator appleJwtValidator;
-    private final FindOrCreateUserByAppleSubUseCase findOrCreateUserByAppleSubUseCase;
+    private final SessionTokenIssuer sessionTokenIssuer;
     private final ObjectMapper objectMapper;
 
-    public AppleJwtAuthenticationFilter(AppleJwtValidator appleJwtValidator,
-                                        FindOrCreateUserByAppleSubUseCase findOrCreateUserByAppleSubUseCase,
-                                        ObjectMapper objectMapper) {
-        this.appleJwtValidator = appleJwtValidator;
-        this.findOrCreateUserByAppleSubUseCase = findOrCreateUserByAppleSubUseCase;
+    public SessionJwtAuthenticationFilter(SessionTokenIssuer sessionTokenIssuer,
+                                          ObjectMapper objectMapper) {
+        this.sessionTokenIssuer = sessionTokenIssuer;
         this.objectMapper = objectMapper;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        if (path == null) {
+            return false;
+        }
+        return path.equals("/api/v1/auth/apple")
+                || path.equals("/api/v1/auth/refresh");
     }
 
     @Override
@@ -51,23 +59,19 @@ public class AppleJwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (token != null) {
             try {
-                AppleJwtClaims claims = appleJwtValidator.validate(token);
-                User user = findOrCreateUserByAppleSubUseCase.execute(claims.sub());
-
-                AuthenticatedUser authenticatedUser = new AuthenticatedUser(user.getUserId(), claims.sub());
+                String userId = sessionTokenIssuer.validateAccessToken(token);
+                AuthenticatedUser authenticatedUser = new AuthenticatedUser(userId, null);
                 SecurityContextHolder.getContext().setAuthentication(authenticatedUser);
-
-                logger.debug("Authenticated user: {} (Apple sub: {})", user.getUserId(), claims.sub());
-
-            } catch (InvalidAppleJwtException e) {
-                logger.warn("Invalid Apple JWT: {}", e.getMessage());
+                logger.debug("Authenticated session user: {}", userId);
+            } catch (InvalidSessionJwtException e) {
+                logger.warn("Invalid session JWT: {}", e.getMessage());
                 sendUnauthorizedResponse(response, request.getRequestURI(),
-                    "Invalid or expired authentication token: " + e.getMessage());
+                        "Invalid or expired authentication token: " + e.getMessage());
                 return;
             } catch (Exception e) {
-                logger.error("Error during authentication", e);
+                logger.error("Error during session authentication", e);
                 sendUnauthorizedResponse(response, request.getRequestURI(),
-                    "Authentication failed");
+                        "Authentication failed");
                 return;
             }
         }
@@ -77,7 +81,7 @@ public class AppleJwtAuthenticationFilter extends OncePerRequestFilter {
 
     /**
      * Prefer Authorization: Bearer. For EventSource clients that cannot set headers,
-     * allow ?access_token= on the SSE endpoint only (avoids leaking tokens on other URLs via logs/referrers).
+     * allow ?access_token= on the SSE endpoint only.
      */
     String extractToken(HttpServletRequest request) {
         String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER);
@@ -118,9 +122,9 @@ public class AppleJwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (Exception e) {
             logger.error("Failed to serialize ErrorResponse, falling back to minimal JSON", e);
             String fallbackJson = String.format(
-                "{\"message\":\"%s\",\"code\":\"UNAUTHORIZED\",\"status\":401,\"path\":\"%s\"}",
-                escapeJson(message),
-                escapeJson(path)
+                    "{\"message\":\"%s\",\"code\":\"UNAUTHORIZED\",\"status\":401,\"path\":\"%s\"}",
+                    escapeJson(message),
+                    escapeJson(path)
             );
             response.getWriter().write(fallbackJson);
         }

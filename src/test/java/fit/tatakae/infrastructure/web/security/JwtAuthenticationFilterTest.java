@@ -1,18 +1,7 @@
 package fit.tatakae.infrastructure.web.security;
 
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
-import fit.tatakae.TestUsers;
-import fit.tatakae.application.usecase.FindOrCreateUserByAppleSubUseCase;
-import fit.tatakae.domain.entity.Gender;
-import fit.tatakae.domain.entity.PrivacyLevel;
-import fit.tatakae.domain.entity.User;
-import fit.tatakae.infrastructure.web.security.jwt.AppleJwtValidator;
+import fit.tatakae.application.port.SessionTokenIssuer;
+import fit.tatakae.infrastructure.web.security.jwt.InvalidSessionJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -24,7 +13,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -35,10 +23,7 @@ import static org.mockito.Mockito.*;
 public class JwtAuthenticationFilterTest {
 
     @Mock
-    private AppleJwtValidator appleJwtValidator;
-
-    @Mock
-    private FindOrCreateUserByAppleSubUseCase findOrCreateUserByAppleSubUseCase;
+    private SessionTokenIssuer sessionTokenIssuer;
 
     @Mock
     private HttpServletRequest request;
@@ -52,16 +37,15 @@ public class JwtAuthenticationFilterTest {
     @Mock
     private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
-    private AppleJwtAuthenticationFilter filter;
+    private SessionJwtAuthenticationFilter filter;
 
     @BeforeEach
     public void setUp() {
-        filter = new AppleJwtAuthenticationFilter(appleJwtValidator, findOrCreateUserByAppleSubUseCase, objectMapper);
+        filter = new SessionJwtAuthenticationFilter(sessionTokenIssuer, objectMapper);
     }
 
     @Test
     public void shouldReturn401WhenBearerTokenIsInvalid() throws Exception {
-        // Arrange
         String invalidToken = "invalid.jwt.token";
         when(request.getHeader("Authorization")).thenReturn("Bearer " + invalidToken);
         when(request.getRequestURI()).thenReturn("/api/v1/users/test");
@@ -69,17 +53,15 @@ public class JwtAuthenticationFilterTest {
         StringWriter writer = new StringWriter();
         when(response.getWriter()).thenReturn(new PrintWriter(writer));
 
-        when(appleJwtValidator.validate(invalidToken)).thenThrow(
-                new fit.tatakae.infrastructure.web.security.jwt.InvalidAppleJwtException("Invalid JWT format"));
+        when(sessionTokenIssuer.validateAccessToken(invalidToken)).thenThrow(
+                new InvalidSessionJwtException("Invalid JWT format"));
 
-        // Act
         filter.doFilterInternal(request, response, filterChain);
 
-        // Assert
         verify(response).setStatus(401);
         verify(response).setContentType("application/json");
         verify(filterChain, never()).doFilter(request, response);
-        
+
         String responseBody = writer.toString();
         assertTrue(responseBody.contains("UNAUTHORIZED"));
         assertTrue(responseBody.contains("Invalid or expired authentication token"));
@@ -87,7 +69,6 @@ public class JwtAuthenticationFilterTest {
 
     @Test
     public void shouldReturn401WhenBearerTokenIsExpired() throws Exception {
-        // Arrange
         String expiredToken = "expired.jwt.token";
         when(request.getHeader("Authorization")).thenReturn("Bearer " + expiredToken);
         when(request.getRequestURI()).thenReturn("/api/v1/users/test");
@@ -95,16 +76,14 @@ public class JwtAuthenticationFilterTest {
         StringWriter writer = new StringWriter();
         when(response.getWriter()).thenReturn(new PrintWriter(writer));
 
-        when(appleJwtValidator.validate(expiredToken)).thenThrow(
-                new fit.tatakae.infrastructure.web.security.jwt.InvalidAppleJwtException("Token has expired"));
+        when(sessionTokenIssuer.validateAccessToken(expiredToken)).thenThrow(
+                new InvalidSessionJwtException("Token has expired"));
 
-        // Act
         filter.doFilterInternal(request, response, filterChain);
 
-        // Assert
         verify(response).setStatus(401);
         verify(filterChain, never()).doFilter(request, response);
-        
+
         String responseBody = writer.toString();
         assertTrue(responseBody.contains("UNAUTHORIZED"));
         assertTrue(responseBody.contains("expired"));
@@ -112,104 +91,77 @@ public class JwtAuthenticationFilterTest {
 
     @Test
     public void shouldContinueFilterChainWhenNoBearerToken() throws Exception {
-        // Arrange
         when(request.getHeader("Authorization")).thenReturn(null);
         when(request.getRequestURI()).thenReturn("/api/v1/users/test");
 
-        // Act
         filter.doFilterInternal(request, response, filterChain);
 
-        // Assert
         verify(filterChain).doFilter(request, response);
         verify(response, never()).setStatus(anyInt());
     }
 
     @Test
     public void shouldAuthenticateViaAccessTokenQueryOnEventsEndpoint() throws Exception {
-        // Arrange
         String token = "query.jwt.token";
         when(request.getHeader("Authorization")).thenReturn(null);
         when(request.getRequestURI()).thenReturn("/api/v1/events");
         when(request.getParameter("access_token")).thenReturn(token);
 
-        fit.tatakae.infrastructure.web.security.jwt.AppleJwtClaims claims =
-                new fit.tatakae.infrastructure.web.security.jwt.AppleJwtClaims("apple-sub-1", "a@b.c");
-        when(appleJwtValidator.validate(token)).thenReturn(claims);
+        when(sessionTokenIssuer.validateAccessToken(token)).thenReturn("user-123");
 
-        User user = TestUsers.user("jacob", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
-        when(findOrCreateUserByAppleSubUseCase.execute("apple-sub-1")).thenReturn(user);
-
-        // Act
         filter.doFilterInternal(request, response, filterChain);
 
-        // Assert
         verify(filterChain).doFilter(request, response);
         verify(response, never()).setStatus(anyInt());
         assertTrue(org.springframework.security.core.context.SecurityContextHolder.getContext()
                 .getAuthentication() instanceof AuthenticatedUser);
         AuthenticatedUser authenticated = (AuthenticatedUser) org.springframework.security.core.context.SecurityContextHolder
                 .getContext().getAuthentication();
-        assertTrue(authenticated.getUserId().equals(user.getUserId()));
+        assertTrue(authenticated.getUserId().equals("user-123"));
         org.springframework.security.core.context.SecurityContextHolder.clearContext();
     }
 
     @Test
     public void shouldIgnoreAccessTokenQueryOnNonEventsEndpoints() throws Exception {
-        // Arrange
         when(request.getHeader("Authorization")).thenReturn(null);
         when(request.getRequestURI()).thenReturn("/api/v1/users/me");
 
-        // Act
         filter.doFilterInternal(request, response, filterChain);
 
-        // Assert
-        verify(appleJwtValidator, never()).validate(anyString());
+        verify(sessionTokenIssuer, never()).validateAccessToken(anyString());
         verify(filterChain).doFilter(request, response);
     }
 
     @Test
     public void shouldPreferBearerHeaderOverAccessTokenQuery() {
-        // Arrange — when Bearer is present, path/query must not matter
         when(request.getHeader("Authorization")).thenReturn("Bearer bearer.jwt.token");
 
-        // Act / Assert
         assertTrue("bearer.jwt.token".equals(filter.extractToken(request)));
     }
 
     @Test
     public void shouldAuthenticateViaAccessTokenOnEventsSubpath() throws Exception {
-        // Arrange
         String token = "subpath.jwt.token";
         when(request.getHeader("Authorization")).thenReturn(null);
         when(request.getRequestURI()).thenReturn("/api/v1/events/");
         when(request.getParameter("access_token")).thenReturn(token);
+        when(sessionTokenIssuer.validateAccessToken(token)).thenReturn("user-cara");
 
-        fit.tatakae.infrastructure.web.security.jwt.AppleJwtClaims claims =
-                new fit.tatakae.infrastructure.web.security.jwt.AppleJwtClaims("apple-sub-3", null);
-        when(appleJwtValidator.validate(token)).thenReturn(claims);
-        User user = TestUsers.user("cara", "cl", PrivacyLevel.PUBLIC, Gender.FEMALE);
-        when(findOrCreateUserByAppleSubUseCase.execute("apple-sub-3")).thenReturn(user);
-
-        // Act
         filter.doFilterInternal(request, response, filterChain);
 
-        // Assert
         verify(filterChain).doFilter(request, response);
         org.springframework.security.core.context.SecurityContextHolder.clearContext();
     }
 
     @Test
     public void shouldIgnoreBlankAccessTokenOnEventsEndpoint() throws Exception {
-        // Arrange
         when(request.getHeader("Authorization")).thenReturn(null);
         when(request.getRequestURI()).thenReturn("/api/v1/events");
         when(request.getParameter("access_token")).thenReturn("   ");
 
-        // Act
         filter.doFilterInternal(request, response, filterChain);
 
-        // Assert
-        verify(appleJwtValidator, never()).validate(anyString());
+        verify(sessionTokenIssuer, never()).validateAccessToken(anyString());
         verify(filterChain).doFilter(request, response);
     }
 
@@ -224,7 +176,7 @@ public class JwtAuthenticationFilterTest {
     public void shouldReturn401WhenAuthenticationThrowsUnexpectedException() throws Exception {
         when(request.getHeader("Authorization")).thenReturn("Bearer weird.token");
         when(request.getRequestURI()).thenReturn("/api/v1/events");
-        when(appleJwtValidator.validate("weird.token")).thenThrow(new RuntimeException("jwks down"));
+        when(sessionTokenIssuer.validateAccessToken("weird.token")).thenThrow(new RuntimeException("boom"));
 
         StringWriter writer = new StringWriter();
         when(response.getWriter()).thenReturn(new PrintWriter(writer));
@@ -244,7 +196,7 @@ public class JwtAuthenticationFilterTest {
         assertTrue(filter.extractToken(request) == null);
         filter.doFilterInternal(request, response, filterChain);
         verify(filterChain).doFilter(request, response);
-        verify(appleJwtValidator, never()).validate(anyString());
+        verify(sessionTokenIssuer, never()).validateAccessToken(anyString());
     }
 
     @Test
@@ -260,8 +212,8 @@ public class JwtAuthenticationFilterTest {
     public void shouldWriteUnauthorizedJsonWhenObjectMapperSucceeds() throws Exception {
         when(request.getHeader("Authorization")).thenReturn("Bearer bad");
         when(request.getRequestURI()).thenReturn("/api/v1/users/test");
-        when(appleJwtValidator.validate("bad")).thenThrow(
-                new fit.tatakae.infrastructure.web.security.jwt.InvalidAppleJwtException("nope"));
+        when(sessionTokenIssuer.validateAccessToken("bad")).thenThrow(
+                new InvalidSessionJwtException("nope"));
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"code\":\"UNAUTHORIZED\"}");
 
         StringWriter writer = new StringWriter();
@@ -277,8 +229,8 @@ public class JwtAuthenticationFilterTest {
     public void escapeJsonHandlesNullViaFallbackPath() throws Exception {
         when(request.getHeader("Authorization")).thenReturn("Bearer bad");
         when(request.getRequestURI()).thenReturn(null);
-        when(appleJwtValidator.validate("bad")).thenThrow(
-                new fit.tatakae.infrastructure.web.security.jwt.InvalidAppleJwtException("nope"));
+        when(sessionTokenIssuer.validateAccessToken("bad")).thenThrow(
+                new InvalidSessionJwtException("nope"));
         when(objectMapper.writeValueAsString(any())).thenThrow(new RuntimeException("ser fail"));
 
         StringWriter writer = new StringWriter();
@@ -288,5 +240,15 @@ public class JwtAuthenticationFilterTest {
 
         assertTrue(writer.toString().contains("UNAUTHORIZED"));
         assertTrue(writer.toString().contains("\"path\":\"\""));
+    }
+
+    @Test
+    public void shouldNotFilterAuthAppleAndRefreshPaths() {
+        when(request.getRequestURI()).thenReturn("/api/v1/auth/apple");
+        assertTrue(filter.shouldNotFilter(request));
+        when(request.getRequestURI()).thenReturn("/api/v1/auth/refresh");
+        assertTrue(filter.shouldNotFilter(request));
+        when(request.getRequestURI()).thenReturn("/api/v1/auth/me");
+        assertTrue(!filter.shouldNotFilter(request));
     }
 }
