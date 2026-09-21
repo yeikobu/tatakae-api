@@ -61,8 +61,12 @@ public class LeaderboardControllerTest {
 
 
     private TrainingSession sessionOf(String username, int reps) {
+        return sessionOf(username, reps, Exercise.PULL_UP);
+    }
+
+    private TrainingSession sessionOf(String username, int reps, Exercise exercise) {
         User user = TestUsers.user(username, "cl", PrivacyLevel.PUBLIC);
-        return new TrainingSession(user, Exercise.PULL_UP, reps, START, START.plusSeconds(60), CLOCK);
+        return new TrainingSession(user, exercise, reps, START, START.plusSeconds(60), CLOCK);
     }
 
     @Test
@@ -125,6 +129,19 @@ public class LeaderboardControllerTest {
 
         // Act and Assert — FRIENDS scope uses the authenticated principal, never a userId query param
         mockMvc.perform(get("/api/v1/leaderboards/PULL_UP").param("scope", "friends"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].userId").value(TestUsers.idOf("first")));
+    }
+
+    @Test
+    public void shouldReturnTheFriendsRankingForANewlyCountedExercise() throws Exception {
+        // Arrange
+        authenticateAs(TestUsers.idOf("first"));
+        when(getLeaderboardUseCase.executeByFriends(Exercise.BURPEES, TestUsers.idOf("first"), null))
+                .thenReturn(List.of(sessionOf("first", 20, Exercise.BURPEES)));
+
+        // Act and Assert
+        mockMvc.perform(get("/api/v1/leaderboards/BURPEES").param("scope", "FRIENDS"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].userId").value(TestUsers.idOf("first")));
     }

@@ -379,7 +379,7 @@ erDiagram
     TRAINING_SESSIONS {
         string id PK "UUID of the set"
         string user_id FK "athlete that trained, references users.id"
-        string exercise "PUSH_UP, PIKE_PUSH_UP, PULL_UP, DIP or SQUAT, checked by the database"
+        string exercise "PUSH_UP, INCLINE_PUSH_UP, PIKE_PUSH_UP, DECLINED_PIKE_PUSH_UP, PULL_UP, CHIN_UP, AUSTRALIAN_PULL_UP, DIP, SQUAT, BURPEES or CRUNCH, checked by the database"
         int reps "repetitions counted on device"
         timestamptz started_at "start of the set"
         timestamptz ended_at "end of the set, always after the start"

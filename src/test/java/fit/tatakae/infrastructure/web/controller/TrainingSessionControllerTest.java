@@ -157,6 +157,42 @@ public class TrainingSessionControllerTest {
     }
 
     @Test
+    public void shouldRecordASessionForANewlyCountedExercise() throws Exception {
+        // Arrange
+        authenticateAs("user_1");
+        User user = TestUsers.user("yeikobu", "cl", PrivacyLevel.PUBLIC);
+        TrainingSession session = new TrainingSession(user, Exercise.BURPEES, 20, START, END, CLOCK);
+        when(getUserUseCase.execute("user_1")).thenReturn(user);
+        when(recordTrainingSessionUseCase.execute(eq(user), eq(Exercise.BURPEES), eq(20), eq(START), eq(END), any()))
+                .thenReturn(session);
+        CreateTrainingSessionRequest request =
+                new CreateTrainingSessionRequest("user_1", Exercise.BURPEES, 20, START, END);
+
+        // Act and Assert
+        mockMvc.perform(post("/api/v1/training-sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.reps").value(20));
+    }
+
+    @Test
+    public void shouldReturnBadRequestWhenTheExerciseIsUnknown() throws Exception {
+        // Arrange
+        String body = """
+                {"userId":"user_1","exercise":"PLANK","reps":20,\
+                "start":"2026-08-28T10:00:00Z","end":"2026-08-28T10:01:00Z"}
+                """;
+
+        // Act and Assert
+        mockMvc.perform(post("/api/v1/training-sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+    }
+
+    @Test
     public void shouldReturnBadRequestWhenRepsAreNotPositive() throws Exception {
         // Arrange
         CreateTrainingSessionRequest request =

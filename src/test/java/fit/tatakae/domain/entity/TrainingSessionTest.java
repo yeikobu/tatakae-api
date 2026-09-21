@@ -55,6 +55,36 @@ public class TrainingSessionTest {
     }
 
     @Test
+    public void shouldRejectABurpeeSetAboveTheCapEvenWhenTheWindowIsLong() {
+        // Arrange — the cap is an absolute ceiling, not reps times minutes
+        User user = TestUsers.user("Jacob", "CL", PrivacyLevel.PUBLIC);
+        Instant start = Instant.parse("2026-07-22T10:00:00Z");
+        Instant end = start.plusSeconds(600);
+        Clock clock = Clock.fixed(start, ZoneOffset.UTC);
+        int overCap = Exercise.BURPEES.getExerciseMaxRepsAllowedPerMinute() + 1;
+
+        // Act and Assert
+        assertThrows(FraudulentSessionException.class, () ->
+                new TrainingSession(user, Exercise.BURPEES, overCap, start, end, clock));
+    }
+
+    @Test
+    public void shouldAcceptABurpeeSetThatSitsOnTheCap() {
+        // Arrange
+        User user = TestUsers.user("Jacob", "CL", PrivacyLevel.PUBLIC);
+        Instant start = Instant.parse("2026-07-22T10:00:00Z");
+        Clock clock = Clock.fixed(start, ZoneOffset.UTC);
+        int cap = Exercise.BURPEES.getExerciseMaxRepsAllowedPerMinute();
+
+        // Act
+        TrainingSession session = new TrainingSession(user, Exercise.BURPEES, cap, start, start.plusSeconds(60), clock);
+
+        // Assert
+        assertEquals(cap, session.getReps());
+        assertEquals(Exercise.BURPEES, session.getExercise());
+    }
+
+    @Test
     public void shouldAssignAUniqueIdToEachSessionWhenNotProvided() {
         // Arrange
         User user = TestUsers.user("Jacob", "CL", PrivacyLevel.PUBLIC);

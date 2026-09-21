@@ -49,6 +49,27 @@ public class JpaSessionRepositoryTest extends PostgresIntegrationTest {
     }
 
     @Test
+    public void shouldStoreASessionOfANewlyCountedExercise() {
+        // Arrange
+        User user = TestUsers.user("athlete_burpees", "cl", PrivacyLevel.PUBLIC);
+        userRepository.save(user);
+        TrainingSession session =
+                new TrainingSession(user, Exercise.BURPEES, 12, NOW, NOW.plusSeconds(60), CLOCK);
+
+        // Act
+        sessionRepository.save(session);
+        List<TrainingSession> stored = sessionRepository.getAll();
+
+        // Assert
+        TrainingSession persisted = stored.stream()
+                .filter(candidate -> candidate.getId().equals(session.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(Exercise.BURPEES, persisted.getExercise());
+        assertEquals(12, persisted.getReps());
+    }
+
+    @Test
     public void shouldThrowExceptionWhenTheAthleteWasNeverStored() {
         // Arrange
         User unknown = TestUsers.user("ghost", "cl", PrivacyLevel.PUBLIC);
