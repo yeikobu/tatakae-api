@@ -1,4 +1,8 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
   application:
     name: tatakae-api
   profiles:
@@ -8,6 +12,10 @@ server:
   port: ${SERVER_PORT:8080}
 
 app:
+  avatar:
+    storage-dir: ${AVATAR_STORAGE_DIR:./data/avatars}
+    public-base-url: ${AVATAR_PUBLIC_BASE_URL:http://localhost:8080}
+    max-bytes: ${AVATAR_MAX_BYTES:2097152}
   apple:
     # Comma-separated list of Apple client IDs (iOS Bundle ID and Web Services ID)
     # Example: com.tatakae.ios,fit.tatakae.web
@@ -18,6 +26,11 @@ app:
     # Comma-separated list of allowed origins for CORS
     # Includes local development origins by default
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  jwt:
+    # HS256 secret for Tatakae access tokens (required in prod/dev — set JWT_SECRET)
+    secret: ${JWT_SECRET:}
+    access-ttl-seconds: ${JWT_ACCESS_TTL_SECONDS:900}
+    refresh-ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:5184000}
 
 # Only the health probe is reachable over HTTP, mapped to /healthcheck.
 # It reports DOWN when a required dependency such as PostgreSQL is unreachable,

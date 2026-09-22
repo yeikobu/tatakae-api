@@ -1,7 +1,9 @@
 package fit.tatakae.infrastructure.web.exception;
 
 import fit.tatakae.domain.exception.*;
+import fit.tatakae.domain.exception.InvalidSessionTokenException;
 import fit.tatakae.infrastructure.web.security.jwt.InvalidAppleJwtException;
+import fit.tatakae.infrastructure.web.security.jwt.InvalidSessionJwtException;
 import fit.tatakae.infrastructure.web.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -60,8 +62,15 @@ public class GlobalExceptionHandler {
         return build(exception.getMessage(), "UNAUTHORIZED", HttpStatus.UNAUTHORIZED, request);
     }
 
+    @ExceptionHandler({InvalidSessionTokenException.class, InvalidSessionJwtException.class})
+    public ResponseEntity<ErrorResponse> handleInvalidSessionToken(RuntimeException exception,
+                                                                   HttpServletRequest request) {
+        return build(exception.getMessage(), "UNAUTHORIZED", HttpStatus.UNAUTHORIZED, request);
+    }
+
     @ExceptionHandler({
             InvalidUserException.class,
+            InvalidAvatarException.class,
             InvalidFriendshipException.class,
             InconsistentSessionException.class,
             IllegalArgumentException.class

@@ -15,3 +15,9 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+app:
+  avatar:
+    storage-dir: ${AVATAR_STORAGE_DIR:/data/avatars}
+    public-base-url: ${AVATAR_PUBLIC_BASE_URL:https://api.tatakae.fit}
+    max-bytes: ${AVATAR_MAX_BYTES:2097152}

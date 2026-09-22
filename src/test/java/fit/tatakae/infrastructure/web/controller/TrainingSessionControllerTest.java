@@ -1,5 +1,10 @@
 package fit.tatakae.infrastructure.web.controller;
 
+import fit.tatakae.infrastructure.web.WebMvcSliceTestConfiguration;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
+
+
 import fit.tatakae.TestUsers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fit.tatakae.application.usecase.GetUserUseCase;
@@ -12,7 +17,11 @@ import fit.tatakae.domain.exception.FraudulentSessionException;
 import fit.tatakae.domain.exception.InconsistentSessionException;
 import fit.tatakae.domain.exception.ResourceNotFoundException;
 import fit.tatakae.infrastructure.web.dto.CreateTrainingSessionRequest;
+import fit.tatakae.infrastructure.web.security.AuthenticatedUser;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -30,6 +39,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+@Import(WebMvcSliceTestConfiguration.class)
+@AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(TrainingSessionController.class)
 public class TrainingSessionControllerTest {
 
@@ -57,9 +68,24 @@ public class TrainingSessionControllerTest {
     @MockitoBean
     private GetUserUseCase getUserUseCase;
 
+    @BeforeEach
+    void clearSecurity() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @AfterEach
+    void clearSecurityAfter() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void authenticateAs(String userId) {
+        SecurityContextHolder.getContext().setAuthentication(new AuthenticatedUser(userId, "apple-sub"));
+    }
+
     @Test
     public void shouldRecordASessionAndReturnCreated() throws Exception {
         // Arrange
+        authenticateAs("user_1");
         User user = TestUsers.user("yeikobu", "cl", PrivacyLevel.PUBLIC);
         TrainingSession session = new TrainingSession(user, Exercise.PULL_UP, 20, START, END, CLOCK);
         when(getUserUseCase.execute("user_1")).thenReturn(user);
@@ -80,6 +106,7 @@ public class TrainingSessionControllerTest {
     @Test
     public void shouldReturnNotFoundWhenTheAthleteDoesNotExist() throws Exception {
         // Arrange
+        authenticateAs("ghost");
         when(getUserUseCase.execute("ghost")).thenThrow(new ResourceNotFoundException("User ghost was not found"));
         CreateTrainingSessionRequest request =
                 new CreateTrainingSessionRequest("ghost", Exercise.PULL_UP, 20, START, END);
@@ -94,6 +121,7 @@ public class TrainingSessionControllerTest {
     @Test
     public void shouldReturnUnprocessableEntityWhenTheSetLooksFraudulent() throws Exception {
         // Arrange
+        authenticateAs("user_1");
         User user = TestUsers.user("yeikobu", "cl", PrivacyLevel.PUBLIC);
         when(getUserUseCase.execute("user_1")).thenReturn(user);
         when(recordTrainingSessionUseCase.execute(any(), any(), anyInt(), any(), any(), any()))
@@ -112,6 +140,7 @@ public class TrainingSessionControllerTest {
     @Test
     public void shouldReturnBadRequestWhenTheTimeframeIsInconsistent() throws Exception {
         // Arrange
+        authenticateAs("user_1");
         User user = TestUsers.user("yeikobu", "cl", PrivacyLevel.PUBLIC);
         when(getUserUseCase.execute("user_1")).thenReturn(user);
         when(recordTrainingSessionUseCase.execute(any(), any(), anyInt(), any(), any(), any()))
@@ -125,6 +154,42 @@ public class TrainingSessionControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
+    public void shouldRecordASessionForANewlyCountedExercise() throws Exception {
+        // Arrange
+        authenticateAs("user_1");
+        User user = TestUsers.user("yeikobu", "cl", PrivacyLevel.PUBLIC);
+        TrainingSession session = new TrainingSession(user, Exercise.BURPEES, 20, START, END, CLOCK);
+        when(getUserUseCase.execute("user_1")).thenReturn(user);
+        when(recordTrainingSessionUseCase.execute(eq(user), eq(Exercise.BURPEES), eq(20), eq(START), eq(END), any()))
+                .thenReturn(session);
+        CreateTrainingSessionRequest request =
+                new CreateTrainingSessionRequest("user_1", Exercise.BURPEES, 20, START, END);
+
+        // Act and Assert
+        mockMvc.perform(post("/api/v1/training-sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.reps").value(20));
+    }
+
+    @Test
+    public void shouldReturnBadRequestWhenTheExerciseIsUnknown() throws Exception {
+        // Arrange
+        String body = """
+                {"userId":"user_1","exercise":"PLANK","reps":20,\
+                "start":"2026-08-28T10:00:00Z","end":"2026-08-28T10:01:00Z"}
+                """;
+
+        // Act and Assert
+        mockMvc.perform(post("/api/v1/training-sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
     }
 
     @Test

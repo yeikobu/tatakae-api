@@ -1,7 +1,7 @@
 package fit.tatakae.infrastructure.web.security.config;
 
-import fit.tatakae.infrastructure.web.security.AppleJwtAuthenticationFilter;
 import fit.tatakae.infrastructure.web.security.JwtAuthenticationEntryPoint;
+import fit.tatakae.infrastructure.web.security.SessionJwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -21,14 +21,14 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final AppleJwtAuthenticationFilter appleJwtAuthenticationFilter;
+    private final SessionJwtAuthenticationFilter sessionJwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final AppleAuthProperties appleAuthProperties;
 
-    public SecurityConfig(AppleJwtAuthenticationFilter appleJwtAuthenticationFilter,
-                         JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
-                         AppleAuthProperties appleAuthProperties) {
-        this.appleJwtAuthenticationFilter = appleJwtAuthenticationFilter;
+    public SecurityConfig(SessionJwtAuthenticationFilter sessionJwtAuthenticationFilter,
+                          JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
+                          AppleAuthProperties appleAuthProperties) {
+        this.sessionJwtAuthenticationFilter = sessionJwtAuthenticationFilter;
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
         this.appleAuthProperties = appleAuthProperties;
     }
@@ -43,9 +43,13 @@ public class SecurityConfig {
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/healthcheck").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/avatars/**").permitAll()
                         .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/apple").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/events", "/api/v1/events/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/leaderboards/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/friendships/**").permitAll()
@@ -58,7 +62,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/training-sessions").authenticated()
                         .anyRequest().permitAll()
                 )
-                .addFilterBefore(appleJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(sessionJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

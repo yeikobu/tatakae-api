@@ -2,6 +2,7 @@ package fit.tatakae.infrastructure.web.controller;
 
 import fit.tatakae.application.usecase.*;
 import fit.tatakae.domain.exception.ForbiddenOperationException;
+import fit.tatakae.domain.exception.InvalidAvatarException;
 import fit.tatakae.infrastructure.web.dto.CreateUserRequest;
 import fit.tatakae.infrastructure.web.dto.FriendResponse;
 import fit.tatakae.infrastructure.web.dto.FriendshipResponse;
@@ -15,9 +16,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 
@@ -34,6 +38,8 @@ public class UserController {
     private final DeleteUserUseCase deleteUserUseCase;
     private final ListFriendsUseCase listFriendsUseCase;
     private final ListFriendRequestsUseCase listFriendRequestsUseCase;
+    private final UploadAvatarUseCase uploadAvatarUseCase;
+    private final DeleteAvatarUseCase deleteAvatarUseCase;
 
     public UserController(RegisterUserUseCase registerUserUseCase,
                           GetUserUseCase getUserUseCase,
@@ -42,7 +48,9 @@ public class UserController {
                           UpdateUserUseCase updateUserUseCase,
                           DeleteUserUseCase deleteUserUseCase,
                           ListFriendsUseCase listFriendsUseCase,
-                          ListFriendRequestsUseCase listFriendRequestsUseCase) {
+                          ListFriendRequestsUseCase listFriendRequestsUseCase,
+                          UploadAvatarUseCase uploadAvatarUseCase,
+                          DeleteAvatarUseCase deleteAvatarUseCase) {
         this.registerUserUseCase = registerUserUseCase;
         this.getUserUseCase = getUserUseCase;
         this.listUsersUseCase = listUsersUseCase;
@@ -51,6 +59,8 @@ public class UserController {
         this.deleteUserUseCase = deleteUserUseCase;
         this.listFriendsUseCase = listFriendsUseCase;
         this.listFriendRequestsUseCase = listFriendRequestsUseCase;
+        this.uploadAvatarUseCase = uploadAvatarUseCase;
+        this.deleteAvatarUseCase = deleteAvatarUseCase;
     }
 
     @PostMapping
@@ -101,12 +111,40 @@ public class UserController {
             @ApiResponse(responseCode = "409", description = "Handle already taken by another athlete")
     })
     public UserResponse update(@PathVariable String userId, @Valid @RequestBody UpdateUserRequest request) {
-        String authenticatedUserId = SecurityContextHelper.getAuthenticatedUserId();
-        if (!authenticatedUserId.equals(userId)) {
-            throw new ForbiddenOperationException("Cannot update another user's profile");
-        }
+        requireSelf(userId, "Cannot update another user's profile");
         return UserResponse.from(updateUserUseCase.execute(
                 userId, request.username(), request.country(), request.privacyLevel(), request.gender()));
+    }
+
+    @PutMapping(path = "/{userId}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload or replace the profile avatar")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Avatar stored"),
+            @ApiResponse(responseCode = "400", description = "Invalid file"),
+            @ApiResponse(responseCode = "403", description = "Forbidden: can only update own avatar"),
+            @ApiResponse(responseCode = "404", description = "Athlete not found")
+    })
+    public UserResponse uploadAvatar(
+            @PathVariable String userId,
+            @RequestPart("file") MultipartFile file) {
+        requireSelf(userId, "Cannot update another user's avatar");
+        try {
+            return UserResponse.from(uploadAvatarUseCase.execute(userId, file.getBytes(), file.getContentType()));
+        } catch (IOException e) {
+            throw new InvalidAvatarException("Could not read avatar file");
+        }
+    }
+
+    @DeleteMapping("/{userId}/avatar")
+    @Operation(summary = "Remove the profile avatar")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Avatar removed"),
+            @ApiResponse(responseCode = "403", description = "Forbidden: can only delete own avatar"),
+            @ApiResponse(responseCode = "404", description = "Athlete not found")
+    })
+    public UserResponse deleteAvatar(@PathVariable String userId) {
+        requireSelf(userId, "Cannot delete another user's avatar");
+        return UserResponse.from(deleteAvatarUseCase.execute(userId));
     }
 
     @DeleteMapping("/{userId}")
@@ -118,10 +156,7 @@ public class UserController {
             @ApiResponse(responseCode = "404", description = "Athlete not found")
     })
     public void delete(@PathVariable String userId) {
-        String authenticatedUserId = SecurityContextHelper.getAuthenticatedUserId();
-        if (!authenticatedUserId.equals(userId)) {
-            throw new ForbiddenOperationException("Cannot delete another user's account");
-        }
+        requireSelf(userId, "Cannot delete another user's account");
         deleteUserUseCase.execute(userId);
     }
 
@@ -149,6 +184,13 @@ public class UserController {
         return listFriendRequestsUseCase.execute(userId, parseDirection(direction)).stream()
                 .map(FriendshipResponse::from)
                 .toList();
+    }
+
+    private void requireSelf(String userId, String message) {
+        String authenticatedUserId = SecurityContextHelper.getAuthenticatedUserId();
+        if (!authenticatedUserId.equals(userId)) {
+            throw new ForbiddenOperationException(message);
+        }
     }
 
     private FriendRequestDirection parseDirection(String direction) {

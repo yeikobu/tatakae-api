@@ -1,6 +1,10 @@
 package fit.tatakae.infrastructure.web.config;
 
+import fit.tatakae.application.port.UserEventPublisher;
 import fit.tatakae.application.usecase.*;
+import fit.tatakae.application.port.SessionTokenIssuer;
+import fit.tatakae.domain.repository.AvatarStorage;
+import fit.tatakae.domain.repository.RefreshTokenRepository;
 import fit.tatakae.domain.repository.FriendshipRepository;
 import fit.tatakae.domain.repository.SessionRepository;
 import fit.tatakae.domain.repository.UserRepository;
@@ -65,13 +69,16 @@ public class BeanConfiguration {
     @Bean
     public SendFriendRequestUseCase sendFriendRequestUseCase(UserRepository userRepository,
                                                              FriendshipRepository friendshipRepository,
-                                                             FriendshipService friendshipService) {
-        return new SendFriendRequestUseCase(userRepository, friendshipRepository, friendshipService);
+                                                             FriendshipService friendshipService,
+                                                             UserEventPublisher userEventPublisher) {
+        return new SendFriendRequestUseCase(userRepository, friendshipRepository, friendshipService, userEventPublisher);
     }
 
     @Bean
-    public RespondFriendRequestUseCase respondFriendRequestUseCase(FriendshipRepository friendshipRepository) {
-        return new RespondFriendRequestUseCase(friendshipRepository);
+    public RespondFriendRequestUseCase respondFriendRequestUseCase(FriendshipRepository friendshipRepository,
+                                                                   UserRepository userRepository,
+                                                                   UserEventPublisher userEventPublisher) {
+        return new RespondFriendRequestUseCase(friendshipRepository, userRepository, userEventPublisher);
     }
 
     @Bean
@@ -97,8 +104,10 @@ public class BeanConfiguration {
     }
 
     @Bean
-    public RecordTrainingSessionUseCase recordTrainingSessionUseCase(SessionRepository sessionRepository) {
-        return new RecordTrainingSessionUseCase(sessionRepository);
+    public RecordTrainingSessionUseCase recordTrainingSessionUseCase(SessionRepository sessionRepository,
+                                                                     FriendshipRepository friendshipRepository,
+                                                                     UserEventPublisher userEventPublisher) {
+        return new RecordTrainingSessionUseCase(sessionRepository, friendshipRepository, userEventPublisher);
     }
 
     @Bean
@@ -111,4 +120,36 @@ public class BeanConfiguration {
     public FindOrCreateUserByAppleSubUseCase findOrCreateUserByAppleSubUseCase(UserRepository userRepository) {
         return new FindOrCreateUserByAppleSubUseCase(userRepository);
     }
+
+    @Bean
+    public UploadAvatarUseCase uploadAvatarUseCase(UserRepository userRepository, AvatarStorage avatarStorage) {
+        return new UploadAvatarUseCase(userRepository, avatarStorage);
+    }
+
+
+    @Bean
+    public IssueSessionTokensUseCase issueSessionTokensUseCase(SessionTokenIssuer sessionTokenIssuer,
+                                                               RefreshTokenRepository refreshTokenRepository,
+                                                               Clock clock) {
+        return new IssueSessionTokensUseCase(sessionTokenIssuer, refreshTokenRepository, clock);
+    }
+
+    @Bean
+    public RefreshSessionTokensUseCase refreshSessionTokensUseCase(RefreshTokenRepository refreshTokenRepository,
+                                                                   IssueSessionTokensUseCase issueSessionTokensUseCase,
+                                                                   Clock clock) {
+        return new RefreshSessionTokensUseCase(refreshTokenRepository, issueSessionTokensUseCase, clock);
+    }
+
+    @Bean
+    public RevokeRefreshTokenUseCase revokeRefreshTokenUseCase(RefreshTokenRepository refreshTokenRepository,
+                                                               Clock clock) {
+        return new RevokeRefreshTokenUseCase(refreshTokenRepository, clock);
+    }
+
+    @Bean
+    public DeleteAvatarUseCase deleteAvatarUseCase(UserRepository userRepository, AvatarStorage avatarStorage) {
+        return new DeleteAvatarUseCase(userRepository, avatarStorage);
+    }
+
 }

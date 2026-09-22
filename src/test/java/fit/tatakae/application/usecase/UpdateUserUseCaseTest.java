@@ -41,7 +41,7 @@ public class UpdateUserUseCaseTest {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        User updated = useCase.execute(IDENTITY, "kenshin", "us", PrivacyLevel.PRIVATE, Gender.FEMALE);
+        User updated = useCase.execute(IDENTITY, "kenshin", "us", PrivacyLevel.PRIVATE, Gender.MALE);
 
         // Assert
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
@@ -50,7 +50,18 @@ public class UpdateUserUseCaseTest {
         assertEquals("kenshin", captor.getValue().getUsername());
         assertEquals("us", updated.getCountry());
         assertEquals(PrivacyLevel.PRIVATE, updated.getPrivacyLevel());
-        assertEquals(Gender.FEMALE, updated.getGender());
+        assertEquals(Gender.MALE, updated.getGender());
+    }
+
+    @Test
+    public void shouldRejectChangingGenderAfterRegistration() {
+        // Arrange
+        when(userRepository.findById(IDENTITY)).thenReturn(Optional.of(TestUsers.user("yeikobu")));
+
+        // Act and Assert
+        assertThrows(InvalidUserException.class, () ->
+                useCase.execute(IDENTITY, "yeikobu", "cl", PrivacyLevel.PUBLIC, Gender.FEMALE));
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
