@@ -1,4 +1,7 @@
 spring:
+  config:
+    # Local `./mvnw spring-boot:run` does not export the shell. `.env` is gitignored.
+    import: optional:file:.env[.properties]
   servlet:
     multipart:
       max-file-size: 2MB
