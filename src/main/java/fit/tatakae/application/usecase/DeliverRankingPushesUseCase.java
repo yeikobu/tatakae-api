@@ -9,6 +9,9 @@ import fit.tatakae.domain.repository.RankingAlertPreferenceRepository;
 import fit.tatakae.domain.repository.RankingPushLogRepository;
 import fit.tatakae.domain.service.RankingOvertake;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashSet;
@@ -16,6 +19,7 @@ import java.util.List;
 
 public class DeliverRankingPushesUseCase {
 
+    private static final Logger log = LoggerFactory.getLogger(DeliverRankingPushesUseCase.class);
     static final Duration WINDOW = Duration.ofHours(6);
 
     private final RankingAlertPreferenceRepository preferences;
@@ -43,11 +47,18 @@ public class DeliverRankingPushesUseCase {
         String userId = overtake.userId();
         RankingBoard board = overtake.board();
         if (!preferences.isEnabled(userId) || sentRecently(userId, board, now)) {
+            log.info("Ranking push skipped for {} {}", board, userId);
+            return;
+        }
+        List<DeviceToken> tokens = deviceTokens.findByUserId(userId);
+        if (tokens.isEmpty()) {
+            log.info("Ranking push skipped for {} {}: no device token", board, userId);
             return;
         }
         boolean delivered = false;
-        for (DeviceToken device : deviceTokens.findByUserId(userId)) {
+        for (DeviceToken device : tokens) {
             ApnsSendResult result = apnsSender.send(device, board);
+            log.info("Ranking push {} for {} {} -> {}", board, userId, device.sandbox() ? "sandbox" : "production", result);
             if (result == ApnsSendResult.UNREGISTERED) {
                 deviceTokens.delete(device.token());
             } else if (result == ApnsSendResult.SENT) {

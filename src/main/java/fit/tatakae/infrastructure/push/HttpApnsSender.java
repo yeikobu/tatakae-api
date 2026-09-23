@@ -62,6 +62,7 @@ public class HttpApnsSender implements ApnsSender {
     public ApnsSendResult send(DeviceToken device, RankingBoard board) {
         ApnsJwtFactory jwtFactory = device.sandbox() ? sandboxJwt : productionJwt;
         if (jwtFactory == null) {
+            log.warn("Ranking push skipped: no {} APNs key", device.sandbox() ? "sandbox" : "production");
             return ApnsSendResult.DISABLED;
         }
         String host = device.sandbox() ? "api.sandbox.push.apple.com" : "api.push.apple.com";
