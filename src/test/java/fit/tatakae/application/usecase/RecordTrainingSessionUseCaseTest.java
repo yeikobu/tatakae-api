@@ -2,12 +2,15 @@ package fit.tatakae.application.usecase;
 
 import fit.tatakae.TestUsers;
 import fit.tatakae.application.event.LeaderboardUpdateEvent;
+import fit.tatakae.application.port.RankingPushNotifier;
 import fit.tatakae.application.port.UserEventPublisher;
 import fit.tatakae.domain.entity.Exercise;
 import fit.tatakae.domain.entity.Friendship;
 import fit.tatakae.domain.entity.PrivacyLevel;
+import fit.tatakae.domain.entity.RankingBoard;
 import fit.tatakae.domain.entity.TrainingSession;
 import fit.tatakae.domain.entity.User;
+import fit.tatakae.domain.service.RankingOvertake;
 import fit.tatakae.domain.exception.FraudulentSessionException;
 import fit.tatakae.domain.exception.InconsistentSessionException;
 import fit.tatakae.domain.repository.FriendshipRepository;
@@ -40,6 +43,9 @@ public class RecordTrainingSessionUseCaseTest {
 
     @Mock
     private UserEventPublisher userEventPublisher;
+
+    @Mock
+    private RankingPushNotifier rankingPushNotifier;
 
     @InjectMocks
     private RecordTrainingSessionUseCase useCase;
@@ -104,6 +110,36 @@ public class RecordTrainingSessionUseCaseTest {
                 useCase.execute(user, Exercise.PULL_UP, 78, dateExecuted, dateExecuted.plusSeconds(60), clock));
         verify(sessionRepository, never()).save(any());
         verify(userEventPublisher, never()).publishLeaderboardUpdate(any(), any());
+        verify(rankingPushNotifier, never()).notifyOvertaken(any());
+    }
+
+    @Test
+    public void shouldPushAthletesTheNewMarkPassesOnEachBoard() {
+        User jacob = TestUsers.user("Jacob", "CL", PrivacyLevel.PUBLIC);
+        User pal = TestUsers.user("friend", "CL", PrivacyLevel.PUBLIC);
+        User stranger = TestUsers.user("stranger", "US", PrivacyLevel.PUBLIC);
+        Instant start = Instant.parse("2026-07-22T10:00:00Z");
+        Instant earlier = start.minusSeconds(3600);
+        Clock clock = Clock.fixed(start, ZoneOffset.UTC);
+        when(friendshipRepository.findAcceptedFor(jacob.getUserId()))
+                .thenReturn(List.of(new Friendship(jacob.getUserId(), pal.getUserId(), clock)));
+        when(sessionRepository.findByExercise(Exercise.PUSH_UP)).thenReturn(List.of(
+                new TrainingSession(pal, Exercise.PUSH_UP, 10, earlier, earlier.plusSeconds(60), clock),
+                new TrainingSession(stranger, Exercise.PUSH_UP, 12, earlier, earlier.plusSeconds(60), clock)
+        ));
+
+        useCase.execute(jacob, Exercise.PUSH_UP, 20, start, start.plusSeconds(60), clock);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<RankingOvertake>> captor = ArgumentCaptor.forClass(List.class);
+        verify(rankingPushNotifier).notifyOvertaken(captor.capture());
+        List<RankingOvertake> overtakes = captor.getValue();
+        assertTrue(overtakes.contains(new RankingOvertake(pal.getUserId(), RankingBoard.GLOBAL)));
+        assertTrue(overtakes.contains(new RankingOvertake(pal.getUserId(), RankingBoard.COUNTRY)));
+        assertTrue(overtakes.contains(new RankingOvertake(pal.getUserId(), RankingBoard.FRIENDS)));
+        assertTrue(overtakes.contains(new RankingOvertake(stranger.getUserId(), RankingBoard.GLOBAL)));
+        assertFalse(overtakes.contains(new RankingOvertake(stranger.getUserId(), RankingBoard.COUNTRY)));
+        assertFalse(overtakes.contains(new RankingOvertake(stranger.getUserId(), RankingBoard.FRIENDS)));
     }
 
     @Test

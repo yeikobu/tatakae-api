@@ -60,6 +60,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/friendships/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/friendships/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/training-sessions").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/devices").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/devices").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/notification-preferences").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/notification-preferences").authenticated()
                         .anyRequest().permitAll()
                 )
                 .addFilterBefore(sessionJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

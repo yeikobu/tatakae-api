@@ -34,6 +34,17 @@ app:
     secret: ${JWT_SECRET:}
     access-ttl-seconds: ${JWT_ACCESS_TTL_SECONDS:900}
     refresh-ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:5184000}
+  apns:
+    # Empty team id, key id, or key disables ranking pushes. Sessions still save.
+    team-id: ${APNS_TEAM_ID:}
+    key-id: ${APNS_KEY_ID:}
+    private-key: ${APNS_PRIVATE_KEY:}
+    private-key-path: ${APNS_PRIVATE_KEY_PATH:}
+    sandbox-key-id: ${APNS_SANDBOX_KEY_ID:}
+    sandbox-private-key: ${APNS_SANDBOX_PRIVATE_KEY:}
+    sandbox-private-key-path: ${APNS_SANDBOX_PRIVATE_KEY_PATH:}
+    bundle-id: ${APNS_BUNDLE_ID:com.aguilarjacob.tatakae}
+    sandbox-bundle-id: ${APNS_SANDBOX_BUNDLE_ID:com.aguilarjacob.tatakae.dev}
 
 # Only the health probe is reachable over HTTP, mapped to /healthcheck.
 # It reports DOWN when a required dependency such as PostgreSQL is unreachable,

@@ -3,7 +3,10 @@ package fit.tatakae.application.usecase;
 import fit.tatakae.TestUsers;
 import fit.tatakae.domain.exception.InvalidUserException;
 import fit.tatakae.domain.exception.ResourceNotFoundException;
+import fit.tatakae.domain.repository.DeviceTokenRepository;
 import fit.tatakae.domain.repository.FriendshipRepository;
+import fit.tatakae.domain.repository.RankingAlertPreferenceRepository;
+import fit.tatakae.domain.repository.RankingPushLogRepository;
 import fit.tatakae.domain.repository.SessionRepository;
 import fit.tatakae.domain.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -30,6 +33,15 @@ public class DeleteUserUseCaseTest {
     @Mock
     private SessionRepository sessionRepository;
 
+    @Mock
+    private DeviceTokenRepository deviceTokenRepository;
+
+    @Mock
+    private RankingPushLogRepository rankingPushLogRepository;
+
+    @Mock
+    private RankingAlertPreferenceRepository rankingAlertPreferenceRepository;
+
     @InjectMocks
     private DeleteUserUseCase useCase;
 
@@ -44,9 +56,13 @@ public class DeleteUserUseCaseTest {
         useCase.execute(IDENTITY);
 
         // Assert
-        InOrder order = inOrder(sessionRepository, friendshipRepository, userRepository);
+        InOrder order = inOrder(sessionRepository, friendshipRepository, deviceTokenRepository,
+                rankingPushLogRepository, rankingAlertPreferenceRepository, userRepository);
         order.verify(sessionRepository).deleteAllOf(IDENTITY);
         order.verify(friendshipRepository).deleteAllInvolving(IDENTITY);
+        order.verify(deviceTokenRepository).deleteAllOf(IDENTITY);
+        order.verify(rankingPushLogRepository).deleteAllOf(IDENTITY);
+        order.verify(rankingAlertPreferenceRepository).delete(IDENTITY);
         order.verify(userRepository).delete(IDENTITY);
     }
 
@@ -59,13 +75,15 @@ public class DeleteUserUseCaseTest {
         // Act and Assert
         assertThrows(ResourceNotFoundException.class, () -> useCase.execute(unknownIdentity));
         verify(userRepository, never()).delete(anyString());
-        verifyNoInteractions(sessionRepository, friendshipRepository);
+        verifyNoInteractions(sessionRepository, friendshipRepository, deviceTokenRepository,
+                rankingPushLogRepository, rankingAlertPreferenceRepository);
     }
 
     @Test
     public void shouldRejectAnIdentityThatIsNotAUuid() {
         // Act and Assert
         assertThrows(InvalidUserException.class, () -> useCase.execute("yeikobu"));
-        verifyNoInteractions(userRepository, sessionRepository, friendshipRepository);
+        verifyNoInteractions(userRepository, sessionRepository, friendshipRepository, deviceTokenRepository,
+                rankingPushLogRepository, rankingAlertPreferenceRepository);
     }
 }

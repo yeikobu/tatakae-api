@@ -1,9 +1,14 @@
 package fit.tatakae.infrastructure.web.config;
 
+import fit.tatakae.application.port.ApnsSender;
+import fit.tatakae.application.port.RankingPushNotifier;
 import fit.tatakae.application.port.UserEventPublisher;
 import fit.tatakae.application.usecase.*;
 import fit.tatakae.application.port.SessionTokenIssuer;
 import fit.tatakae.domain.repository.AvatarStorage;
+import fit.tatakae.domain.repository.DeviceTokenRepository;
+import fit.tatakae.domain.repository.RankingAlertPreferenceRepository;
+import fit.tatakae.domain.repository.RankingPushLogRepository;
 import fit.tatakae.domain.repository.RefreshTokenRepository;
 import fit.tatakae.domain.repository.FriendshipRepository;
 import fit.tatakae.domain.repository.SessionRepository;
@@ -62,8 +67,12 @@ public class BeanConfiguration {
     @Bean
     public DeleteUserUseCase deleteUserUseCase(UserRepository userRepository,
                                               FriendshipRepository friendshipRepository,
-                                              SessionRepository sessionRepository) {
-        return new DeleteUserUseCase(userRepository, friendshipRepository, sessionRepository);
+                                              SessionRepository sessionRepository,
+                                              DeviceTokenRepository deviceTokenRepository,
+                                              RankingPushLogRepository rankingPushLogRepository,
+                                              RankingAlertPreferenceRepository rankingAlertPreferenceRepository) {
+        return new DeleteUserUseCase(userRepository, friendshipRepository, sessionRepository,
+                deviceTokenRepository, rankingPushLogRepository, rankingAlertPreferenceRepository);
     }
 
     @Bean
@@ -106,8 +115,41 @@ public class BeanConfiguration {
     @Bean
     public RecordTrainingSessionUseCase recordTrainingSessionUseCase(SessionRepository sessionRepository,
                                                                      FriendshipRepository friendshipRepository,
-                                                                     UserEventPublisher userEventPublisher) {
-        return new RecordTrainingSessionUseCase(sessionRepository, friendshipRepository, userEventPublisher);
+                                                                     UserEventPublisher userEventPublisher,
+                                                                     RankingPushNotifier rankingPushNotifier) {
+        return new RecordTrainingSessionUseCase(sessionRepository, friendshipRepository, userEventPublisher,
+                rankingPushNotifier);
+    }
+
+    @Bean
+    public DeliverRankingPushesUseCase deliverRankingPushesUseCase(RankingAlertPreferenceRepository preferences,
+                                                                   RankingPushLogRepository pushLog,
+                                                                   DeviceTokenRepository deviceTokens,
+                                                                   ApnsSender apnsSender) {
+        return new DeliverRankingPushesUseCase(preferences, pushLog, deviceTokens, apnsSender);
+    }
+
+    @Bean
+    public RegisterDeviceTokenUseCase registerDeviceTokenUseCase(DeviceTokenRepository deviceTokens,
+                                                                 UserRepository userRepository,
+                                                                 Clock clock) {
+        return new RegisterDeviceTokenUseCase(deviceTokens, userRepository, clock);
+    }
+
+    @Bean
+    public UnregisterDeviceTokenUseCase unregisterDeviceTokenUseCase(DeviceTokenRepository deviceTokens) {
+        return new UnregisterDeviceTokenUseCase(deviceTokens);
+    }
+
+    @Bean
+    public GetRankingAlertsUseCase getRankingAlertsUseCase(RankingAlertPreferenceRepository preferences) {
+        return new GetRankingAlertsUseCase(preferences);
+    }
+
+    @Bean
+    public SetRankingAlertsUseCase setRankingAlertsUseCase(RankingAlertPreferenceRepository preferences,
+                                                           UserRepository userRepository) {
+        return new SetRankingAlertsUseCase(preferences, userRepository);
     }
 
     @Bean

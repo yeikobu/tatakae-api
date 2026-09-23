@@ -45,6 +45,16 @@ services:
       AVATAR_STORAGE_DIR: /data/avatars
       AVATAR_PUBLIC_BASE_URL: ${AVATAR_PUBLIC_BASE_URL:-https://api.tatakae.fit}
       AVATAR_MAX_BYTES: ${AVATAR_MAX_BYTES:-2097152}
+      # Ranking pushes. Blank key disables APNs; recording a set still succeeds.
+      APNS_TEAM_ID: ${APNS_TEAM_ID:-}
+      APNS_KEY_ID: ${APNS_KEY_ID:-}
+      APNS_PRIVATE_KEY: ${APNS_PRIVATE_KEY:-}
+      APNS_PRIVATE_KEY_PATH: ${APNS_PRIVATE_KEY_PATH:-}
+      APNS_SANDBOX_KEY_ID: ${APNS_SANDBOX_KEY_ID:-}
+      APNS_SANDBOX_PRIVATE_KEY: ${APNS_SANDBOX_PRIVATE_KEY:-}
+      APNS_SANDBOX_PRIVATE_KEY_PATH: ${APNS_SANDBOX_PRIVATE_KEY_PATH:-}
+      APNS_BUNDLE_ID: ${APNS_BUNDLE_ID:-com.aguilarjacob.tatakae}
+      APNS_SANDBOX_BUNDLE_ID: ${APNS_SANDBOX_BUNDLE_ID:-com.aguilarjacob.tatakae.dev}
     depends_on:
       db:
         condition: service_healthy

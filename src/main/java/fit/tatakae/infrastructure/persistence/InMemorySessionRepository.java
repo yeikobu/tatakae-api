@@ -1,5 +1,6 @@
 package fit.tatakae.infrastructure.persistence;
 
+import fit.tatakae.domain.entity.Exercise;
 import fit.tatakae.domain.entity.TrainingSession;
 import fit.tatakae.domain.repository.SessionRepository;
 
@@ -12,6 +13,11 @@ public class InMemorySessionRepository implements SessionRepository {
     @Override
     public List<TrainingSession> getAll() {
         return List.copyOf(sessions);
+    }
+
+    @Override
+    public List<TrainingSession> findByExercise(Exercise exercise) {
+        return sessions.stream().filter(session -> session.isForExercise(exercise)).toList();
     }
 
     @Override

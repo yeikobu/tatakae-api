@@ -1,6 +1,7 @@
 package fit.tatakae.application.usecase;
 
 import fit.tatakae.application.event.LeaderboardUpdateEvent;
+import fit.tatakae.application.port.RankingPushNotifier;
 import fit.tatakae.application.port.UserEventPublisher;
 import fit.tatakae.domain.entity.Exercise;
 import fit.tatakae.domain.entity.Friendship;
@@ -8,6 +9,7 @@ import fit.tatakae.domain.entity.TrainingSession;
 import fit.tatakae.domain.entity.User;
 import fit.tatakae.domain.repository.FriendshipRepository;
 import fit.tatakae.domain.repository.SessionRepository;
+import fit.tatakae.domain.service.RankingOvertakeDetector;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -19,31 +21,42 @@ public class RecordTrainingSessionUseCase {
     private final SessionRepository sessionRepository;
     private final FriendshipRepository friendshipRepository;
     private final UserEventPublisher userEventPublisher;
+    private final RankingPushNotifier rankingPushNotifier;
 
     public RecordTrainingSessionUseCase(SessionRepository sessionRepository,
                                         FriendshipRepository friendshipRepository,
-                                        UserEventPublisher userEventPublisher) {
+                                        UserEventPublisher userEventPublisher,
+                                        RankingPushNotifier rankingPushNotifier) {
         this.sessionRepository = sessionRepository;
         this.friendshipRepository = friendshipRepository;
         this.userEventPublisher = userEventPublisher;
+        this.rankingPushNotifier = rankingPushNotifier;
     }
 
     public TrainingSession execute(User user, Exercise exercise, int reps, Instant start, Instant end, Clock clock) {
         TrainingSession session = new TrainingSession(user, exercise, reps, start, end, clock);
+        // Read before save: afterwards this row is the scorer's best and hides who they just passed.
+        List<TrainingSession> existing = sessionRepository.findByExercise(exercise);
         sessionRepository.save(session);
-        notifyLeaderboardSubscribers(user, exercise, reps);
+        Set<String> friendIds = acceptedFriendIds(user.getUserId());
+        notifyLeaderboardSubscribers(user, exercise, reps, friendIds);
+        rankingPushNotifier.notifyOvertaken(RankingOvertakeDetector.detect(session, existing, friendIds));
         return session;
     }
 
-    private void notifyLeaderboardSubscribers(User user, Exercise exercise, int reps) {
+    private Set<String> acceptedFriendIds(String userId) {
+        Set<String> friendIds = new LinkedHashSet<>();
+        for (Friendship friendship : friendshipRepository.findAcceptedFor(userId)) {
+            friendIds.add(friendship.friendOf(userId));
+        }
+        return friendIds;
+    }
+
+    private void notifyLeaderboardSubscribers(User user, Exercise exercise, int reps, Set<String> friendIds) {
         String userId = user.getUserId();
         Set<String> recipients = new LinkedHashSet<>();
         recipients.add(userId);
-
-        List<Friendship> friendships = friendshipRepository.findAcceptedFor(userId);
-        for (Friendship friendship : friendships) {
-            recipients.add(friendship.friendOf(userId));
-        }
+        recipients.addAll(friendIds);
 
         // MVP: notify scorer + friends for both GLOBAL and FRIENDS scopes (lean refresh hints).
         userEventPublisher.publishLeaderboardUpdate(

@@ -1,5 +1,6 @@
 package fit.tatakae.infrastructure.persistence.adapter;
 
+import fit.tatakae.domain.entity.Exercise;
 import fit.tatakae.domain.entity.TrainingSession;
 import fit.tatakae.domain.exception.ResourceNotFoundException;
 import fit.tatakae.domain.repository.SessionRepository;
@@ -30,6 +31,13 @@ public class JpaSessionRepository implements SessionRepository {
     @Override
     public List<TrainingSession> getAll() {
         return sessionJpaRepository.findAll().stream()
+                .map(entity -> TrainingSessionMapper.toDomain(entity, clock))
+                .toList();
+    }
+
+    @Override
+    public List<TrainingSession> findByExercise(Exercise exercise) {
+        return sessionJpaRepository.findByExercise(exercise).stream()
                 .map(entity -> TrainingSessionMapper.toDomain(entity, clock))
                 .toList();
     }
