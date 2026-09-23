@@ -29,10 +29,12 @@ public final class ApnsPrivateKeyParser {
     }
 
     public static ECPrivateKey parse(String pemOrEscaped) {
-        String pem = pemOrEscaped.replace("\\n", "\n");
+        // Spring lee el .env como properties y conserva las comillas. Docker Compose las quita.
+        String pem = unwrap(pemOrEscaped).replace("\\n", "\n");
         String base64 = pem
                 .replace("-----BEGIN PRIVATE KEY-----", "")
                 .replace("-----END PRIVATE KEY-----", "")
+                .replace("\"", "")
                 .replaceAll("\\s", "");
         try {
             byte[] decoded = Base64.getDecoder().decode(base64);
@@ -41,5 +43,13 @@ public final class ApnsPrivateKeyParser {
         } catch (GeneralSecurityException | IllegalArgumentException exception) {
             throw new IllegalStateException("APNs private key could not be read", exception);
         }
+    }
+
+    private static String unwrap(String raw) {
+        String value = raw.trim();
+        if (value.length() >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
+            return value.substring(1, value.length() - 1).trim();
+        }
+        return value;
     }
 }
