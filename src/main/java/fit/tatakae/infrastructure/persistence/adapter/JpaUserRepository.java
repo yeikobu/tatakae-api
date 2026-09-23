@@ -24,7 +24,7 @@ public class JpaUserRepository implements UserRepository {
 
     @Override
     public Optional<User> findByUsername(String username) {
-        return userJpaRepository.findByUsername(username).map(UserMapper::toDomain);
+        return userJpaRepository.findByUsernameIgnoreCase(username).map(UserMapper::toDomain);
     }
 
     @Override

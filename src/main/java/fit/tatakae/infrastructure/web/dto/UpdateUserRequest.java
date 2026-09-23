@@ -12,7 +12,7 @@ import jakarta.validation.constraints.Size;
 @Schema(name = "UpdateUserRequest", description = "Profile of an athlete, handle included")
 public record UpdateUserRequest(
 
-        @Schema(description = "New public handle, stored in lower case", example = "yeikobu")
+        @Schema(description = "New public handle. Casing is stored as typed; YeikoBu and yeikobu are the same athlete", example = "YeikoBu")
         @NotBlank(message = "username is required")
         @Size(max = 30, message = "username must be at most 30 characters long")
         @Pattern(regexp = "^[A-Za-z0-9._]+$",

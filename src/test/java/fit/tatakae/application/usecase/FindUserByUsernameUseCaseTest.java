@@ -28,7 +28,7 @@ public class FindUserByUsernameUseCaseTest {
     public void shouldResolveAHandleIntoItsAthlete() {
         // Arrange
         User expected = TestUsers.user("yeikobu");
-        when(userRepository.findByUsername("yeikobu")).thenReturn(Optional.of(expected));
+        when(userRepository.findByUsername("YEIKOBU")).thenReturn(Optional.of(expected));
 
         // Act
         User user = useCase.execute("YEIKOBU");

@@ -65,6 +65,22 @@ public class UpdateUserUseCaseTest {
     }
 
     @Test
+    public void shouldPreserveCasingWhenTheAthleteRetypesTheirHandle() {
+        // Arrange
+        User stored = TestUsers.user("yeikobu");
+        when(userRepository.findById(IDENTITY)).thenReturn(Optional.of(stored));
+        when(userRepository.findByUsername("YeikoBu")).thenReturn(Optional.of(stored));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        User updated = useCase.execute(IDENTITY, "  YeikoBu  ", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
+
+        // Assert
+        assertEquals("YeikoBu", updated.getUsername());
+        assertEquals(IDENTITY, updated.getUserId());
+    }
+
+    @Test
     public void shouldAllowKeepingTheSameHandle() {
         // Arrange
         User stored = TestUsers.user("yeikobu");

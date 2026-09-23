@@ -71,12 +71,12 @@ public class UserTest {
     }
 
     @Test
-    public void shouldStoreTheHandleInLowerCase() {
+    public void shouldKeepTheCasingTheAthleteTyped() {
         // Act
         User user = new User(IDENTITY, "  Yeikobu  ", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
 
         // Assert
-        assertEquals("yeikobu", user.getUsername());
+        assertEquals("Yeikobu", user.getUsername());
     }
 
     // This is the whole point of the UUID: a rename must not create a different athlete.

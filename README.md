@@ -296,7 +296,7 @@ An athlete has a **`userId`**, a server generated UUID, a **`username`**, the pu
 
 - The **identity never changes**. Friendships, training sessions and any future moderation record point at the UUID, so a rename can never orphan them or hand a report over to whoever grabs the freed handle.
 - The **handle can change**, and it is unique at any point in time. `PUT /api/v1/users/{userId}` renames an athlete and answers 409 when another one already owns the target handle.
-- Handle rules, in the spirit of an Instagram username: 1 to 30 characters, lower case letters, digits, dots and underscores. Stored normalized, so `Yeikobu` and `yeikobu` are the same handle and the second registration is rejected with 409.
+- Handle rules, in the spirit of an Instagram username: 1 to 30 characters, letters, digits, dots and underscores. The casing the athlete types is stored and shown as-is. Uniqueness ignores case, so `Yeikobu` and `yeikobu` are the same handle and the second registration is rejected with 409.
 - Two value objects guard this. `UserId` refuses anything that is not a UUID, so a malformed path is a clean 400 instead of a lookup miss. `Username` validates and normalizes the handle in its compact constructor, so an invalid handle cannot exist in memory.
 - People type handles, not UUIDs, so `GET /api/v1/users?username=yeikobu` resolves a handle into the athlete that currently owns it.
 
@@ -361,7 +361,7 @@ erDiagram
 
     USERS {
         string id PK "varchar(36), server generated UUID, immutable"
-        string username UK "varchar(30), public handle, lower case, can change"
+        string username UK "varchar(30), public handle, casing preserved, unique ignoring case, can change"
         string country "ISO code used by the local leaderboard"
         string privacy_level "PUBLIC or PRIVATE, checked by the database"
         string gender "MALE or FEMALE, checked by the database"

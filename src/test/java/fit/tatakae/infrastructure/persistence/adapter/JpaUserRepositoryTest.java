@@ -40,9 +40,9 @@ public class JpaUserRepositoryTest extends PostgresIntegrationTest {
         assertEquals(Gender.FEMALE, stored.get().getGender());
     }
 
-    // The handle is the primary key, so a lookup with different casing still lands on the stored row.
+    // Lookup ignores case, but the row keeps the spelling the athlete typed.
     @Test
-    public void shouldFindAUserByItsNormalizedHandle() {
+    public void shouldFindAUserByItsHandleIgnoringCase() {
         // Arrange
         userRepository.save(TestUsers.user("KENSHIN", "jp", PrivacyLevel.PRIVATE));
 
@@ -51,7 +51,7 @@ public class JpaUserRepositoryTest extends PostgresIntegrationTest {
 
         // Assert
         assertTrue(stored.isPresent());
-        assertEquals("kenshin", stored.get().getUsername());
+        assertEquals("KENSHIN", stored.get().getUsername());
         assertEquals(PrivacyLevel.PRIVATE, stored.get().getPrivacyLevel());
     }
 

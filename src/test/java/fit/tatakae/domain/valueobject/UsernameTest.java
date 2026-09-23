@@ -57,19 +57,20 @@ public class UsernameTest {
     }
 
     @Test
-    public void shouldTrimAndLowercaseTheHandle() {
+    public void shouldTrimWithoutChangingTheCasingTheAthleteTyped() {
         // Act
         Username username = new Username("  Jacob.Aguilar  ");
 
         // Assert
-        assertEquals("jacob.aguilar", username.value());
-        assertEquals("jacob.aguilar", username.toString());
+        assertEquals("Jacob.Aguilar", username.value());
+        assertEquals("Jacob.Aguilar", username.toString());
+        assertEquals("jacob.aguilar", username.canonical());
     }
 
     @Test
     public void shouldNormalizeAHandleWithoutKeepingTheValueObject() {
         // Act and Assert
-        assertEquals("yeikobu", Username.normalize(" YEIKOBU "));
+        assertEquals("YEIKOBU", Username.normalize(" YEIKOBU "));
     }
 
     @Test

@@ -48,11 +48,24 @@ public class RegisterUserUseCaseTest {
         assertEquals(Gender.FEMALE, user.getGender());
     }
 
-    // Availability is checked against the normalized handle, so casing cannot smuggle a duplicate in.
+    @Test
+    public void shouldStoreTheCasingTheAthleteTyped() {
+        // Arrange
+        when(userRepository.findByUsername("YeikoBu")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        User user = useCase.execute("  YeikoBu  ", "cl", PrivacyLevel.PUBLIC, Gender.MALE);
+
+        // Assert
+        assertEquals("YeikoBu", user.getUsername());
+    }
+
+    // The repository matches handles ignoring case, so a different spelling cannot smuggle a duplicate in.
     @Test
     public void shouldCheckAvailabilityAgainstTheNormalizedHandle() {
         // Arrange
-        when(userRepository.findByUsername("yeikobu")).thenReturn(Optional.of(TestUsers.user("yeikobu")));
+        when(userRepository.findByUsername("YEIKOBU")).thenReturn(Optional.of(TestUsers.user("yeikobu")));
 
         // Act and Assert
         assertThrows(DuplicateUserException.class, () -> {
