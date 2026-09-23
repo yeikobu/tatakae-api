@@ -1,6 +1,7 @@
 package fit.tatakae.infrastructure.web.config;
 
 import fit.tatakae.application.port.ApnsSender;
+import fit.tatakae.application.port.FriendRequestPushNotifier;
 import fit.tatakae.application.port.RankingPushNotifier;
 import fit.tatakae.application.port.UserEventPublisher;
 import fit.tatakae.application.usecase.*;
@@ -79,8 +80,10 @@ public class BeanConfiguration {
     public SendFriendRequestUseCase sendFriendRequestUseCase(UserRepository userRepository,
                                                              FriendshipRepository friendshipRepository,
                                                              FriendshipService friendshipService,
-                                                             UserEventPublisher userEventPublisher) {
-        return new SendFriendRequestUseCase(userRepository, friendshipRepository, friendshipService, userEventPublisher);
+                                                             UserEventPublisher userEventPublisher,
+                                                             FriendRequestPushNotifier friendRequestPushNotifier) {
+        return new SendFriendRequestUseCase(userRepository, friendshipRepository, friendshipService,
+                userEventPublisher, friendRequestPushNotifier);
     }
 
     @Bean

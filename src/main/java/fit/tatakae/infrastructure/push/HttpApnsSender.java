@@ -75,27 +75,51 @@ public class HttpApnsSender implements ApnsSender {
                 .header("apns-priority", "10")
                 .POST(HttpRequest.BodyPublishers.ofString(RankingPushPayload.json(board)))
                 .build();
+        return dispatch(request, board.name());
+    }
+
+    @Override
+    public ApnsSendResult sendFriendRequest(DeviceToken device, String requesterUsername) {
+        ApnsJwtFactory jwtFactory = device.sandbox() ? sandboxJwt : productionJwt;
+        if (jwtFactory == null) {
+            log.warn("Friend request push skipped: no {} APNs key", device.sandbox() ? "sandbox" : "production");
+            return ApnsSendResult.DISABLED;
+        }
+        String host = device.sandbox() ? "api.sandbox.push.apple.com" : "api.push.apple.com";
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://" + host + "/3/device/" + device.token()))
+                .timeout(Duration.ofSeconds(10))
+                .header("authorization", "bearer " + jwtFactory.bearer(Instant.now()))
+                .header("apns-topic", properties.bundleIdFor(device.sandbox()))
+                .header("apns-push-type", "alert")
+                .header("apns-priority", "10")
+                .POST(HttpRequest.BodyPublishers.ofString(RankingPushPayload.friendRequestJson(requesterUsername)))
+                .build();
+        return dispatch(request, "friend_request");
+    }
+
+    private ApnsSendResult dispatch(HttpRequest request, String label) {
         try {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            return map(response.statusCode(), response.body(), board);
+            return map(response.statusCode(), response.body(), label);
         } catch (IOException exception) {
-            log.warn("APNs request failed for {}: {}", board, exception.toString());
+            log.warn("APNs request failed for {}: {}", label, exception.toString());
             return ApnsSendResult.FAILED;
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            log.warn("APNs request interrupted for {}", board);
+            log.warn("APNs request interrupted for {}", label);
             return ApnsSendResult.FAILED;
         }
     }
 
-    private static ApnsSendResult map(int status, String body, RankingBoard board) {
+    private static ApnsSendResult map(int status, String body, String label) {
         if (status == 200) {
             return ApnsSendResult.SENT;
         }
         if (status == 410 || (status == 400 && body != null && (body.contains("BadDeviceToken") || body.contains("Unregistered")))) {
             return ApnsSendResult.UNREGISTERED;
         }
-        log.warn("APNs rejected {} with HTTP {} {}", board, status, body == null ? "" : body);
+        log.warn("APNs rejected {} with HTTP {} {}", label, status, body == null ? "" : body);
         return ApnsSendResult.FAILED;
     }
 }

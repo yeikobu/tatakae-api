@@ -1,6 +1,7 @@
 package fit.tatakae.application.usecase;
 
 import fit.tatakae.application.event.FriendRequestReceivedEvent;
+import fit.tatakae.application.port.FriendRequestPushNotifier;
 import fit.tatakae.application.port.UserEventPublisher;
 import fit.tatakae.domain.entity.Friendship;
 import fit.tatakae.domain.entity.User;
@@ -15,15 +16,18 @@ public class SendFriendRequestUseCase {
     private final FriendshipRepository friendshipRepository;
     private final FriendshipService friendshipService;
     private final UserEventPublisher userEventPublisher;
+    private final FriendRequestPushNotifier friendRequestPushNotifier;
 
     public SendFriendRequestUseCase(UserRepository userRepository,
                                     FriendshipRepository friendshipRepository,
                                     FriendshipService friendshipService,
-                                    UserEventPublisher userEventPublisher) {
+                                    UserEventPublisher userEventPublisher,
+                                    FriendRequestPushNotifier friendRequestPushNotifier) {
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
         this.friendshipService = friendshipService;
         this.userEventPublisher = userEventPublisher;
+        this.friendRequestPushNotifier = friendRequestPushNotifier;
     }
 
     public Friendship execute(String requesterId, String addresseeId) {
@@ -36,6 +40,7 @@ public class SendFriendRequestUseCase {
         userEventPublisher.publishFriendRequestReceived(
                 addressee,
                 new FriendRequestReceivedEvent(saved, fromUser));
+        friendRequestPushNotifier.notifyAddressee(addressee, fromUser.getUsername());
 
         return saved;
     }

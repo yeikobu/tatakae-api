@@ -2,6 +2,7 @@ package fit.tatakae.application.usecase;
 
 import fit.tatakae.TestUsers;
 import fit.tatakae.application.event.FriendRequestReceivedEvent;
+import fit.tatakae.application.port.FriendRequestPushNotifier;
 import fit.tatakae.application.port.UserEventPublisher;
 import fit.tatakae.domain.entity.Friendship;
 import fit.tatakae.domain.entity.PrivacyLevel;
@@ -44,6 +45,9 @@ public class SendFriendRequestUseCaseTest {
     @Mock
     private UserEventPublisher userEventPublisher;
 
+    @Mock
+    private FriendRequestPushNotifier friendRequestPushNotifier;
+
     @InjectMocks
     private SendFriendRequestUseCase useCase;
 
@@ -69,6 +73,7 @@ public class SendFriendRequestUseCaseTest {
         verify(userEventPublisher).publishFriendRequestReceived(eq(TestUsers.idOf("user_2")), eventCaptor.capture());
         assertEquals(pending.getId(), eventCaptor.getValue().friendship().getId());
         assertEquals(requester, eventCaptor.getValue().fromUser());
+        verify(friendRequestPushNotifier).notifyAddressee(TestUsers.idOf("user_2"), requester.getUsername());
     }
 
     @Test
@@ -80,6 +85,7 @@ public class SendFriendRequestUseCaseTest {
         assertThrows(ResourceNotFoundException.class, () -> useCase.execute(TestUsers.idOf("ghost"), TestUsers.idOf("user_2")));
         verify(friendshipRepository, never()).save(any(Friendship.class));
         verify(userEventPublisher, never()).publishFriendRequestReceived(any(), any());
+        verify(friendRequestPushNotifier, never()).notifyAddressee(any(), any());
     }
 
     @Test
@@ -92,6 +98,7 @@ public class SendFriendRequestUseCaseTest {
         assertThrows(ResourceNotFoundException.class, () -> useCase.execute(TestUsers.idOf("user_1"), TestUsers.idOf("ghost")));
         verify(friendshipRepository, never()).save(any(Friendship.class));
         verify(userEventPublisher, never()).publishFriendRequestReceived(any(), any());
+        verify(friendRequestPushNotifier, never()).notifyAddressee(any(), any());
     }
 
     @Test
@@ -108,5 +115,6 @@ public class SendFriendRequestUseCaseTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> useCase.execute(TestUsers.idOf("user_1"), TestUsers.idOf("user_2")));
         verify(userEventPublisher, never()).publishFriendRequestReceived(any(), any());
+        verify(friendRequestPushNotifier, never()).notifyAddressee(any(), any());
     }
 }
