@@ -122,7 +122,8 @@ public class UserController {
             @ApiResponse(responseCode = "200", description = "Avatar stored"),
             @ApiResponse(responseCode = "400", description = "Invalid file"),
             @ApiResponse(responseCode = "403", description = "Forbidden: can only update own avatar"),
-            @ApiResponse(responseCode = "404", description = "Athlete not found")
+            @ApiResponse(responseCode = "404", description = "Athlete not found"),
+            @ApiResponse(responseCode = "500", description = "The server could not store the file")
     })
     public UserResponse uploadAvatar(
             @PathVariable String userId,

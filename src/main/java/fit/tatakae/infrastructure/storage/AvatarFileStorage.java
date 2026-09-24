@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -58,8 +59,9 @@ public class AvatarFileStorage implements AvatarStorage {
             String base = properties.getPublicBaseUrl().replaceAll("/$", "");
             return base + "/avatars/" + userId + "." + extension;
         } catch (IOException e) {
+            // A disk failure is the server's fault, not the request's: it must surface as a 500, not a 400.
             log.error("Could not store avatar for user {} in {}", userId, dir, e);
-            throw new InvalidAvatarException("Could not store avatar file");
+            throw new UncheckedIOException("Could not store avatar file", e);
         }
     }
 

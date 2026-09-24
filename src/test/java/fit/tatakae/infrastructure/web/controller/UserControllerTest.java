@@ -24,10 +24,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import fit.tatakae.infrastructure.web.security.jwt.AppleJwtValidator;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -35,6 +39,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -269,6 +274,22 @@ public class UserControllerTest {
 
         // Act and Assert
         mockMvc.perform(get("/api/v1/users/boom"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+                .andExpect(jsonPath("$.message").value("An unexpected error occurred while processing the request"));
+    }
+
+    // The client can't fix a full or unwritable disk by resending, so it must not be told the file was bad.
+    @Test
+    public void shouldReturnInternalServerErrorWhenTheAvatarCannotBeStored() throws Exception {
+        // Arrange
+        authenticateAs("user_1");
+        when(uploadAvatarUseCase.execute(eq("user_1"), any(), eq("image/jpeg")))
+                .thenThrow(new UncheckedIOException("Could not store avatar file", new IOException("Permission denied")));
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.jpg", "image/jpeg", new byte[]{1, 2, 3});
+
+        // Act and Assert
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/v1/users/user_1/avatar").file(file))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
                 .andExpect(jsonPath("$.message").value("An unexpected error occurred while processing the request"));
