@@ -3,6 +3,8 @@ package fit.tatakae.infrastructure.storage;
 import fit.tatakae.domain.exception.InvalidAvatarException;
 import fit.tatakae.domain.repository.AvatarStorage;
 import fit.tatakae.infrastructure.web.config.AvatarStorageProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -15,6 +17,8 @@ import java.util.Set;
 
 @Component
 public class AvatarFileStorage implements AvatarStorage {
+
+    private static final Logger log = LoggerFactory.getLogger(AvatarFileStorage.class);
 
     private static final Map<String, String> EXTENSION_BY_CONTENT_TYPE = Map.of(
             "image/jpeg", "jpg",
@@ -54,6 +58,7 @@ public class AvatarFileStorage implements AvatarStorage {
             String base = properties.getPublicBaseUrl().replaceAll("/$", "");
             return base + "/avatars/" + userId + "." + extension;
         } catch (IOException e) {
+            log.error("Could not store avatar for user {} in {}", userId, dir, e);
             throw new InvalidAvatarException("Could not store avatar file");
         }
     }

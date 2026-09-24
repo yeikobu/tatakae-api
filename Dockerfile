@@ -34,6 +34,11 @@ COPY --from=build /app/target/*.jar app.jar
 # Change ownership to non-root user
 RUN chown spring:spring app.jar
 
+# The avatars volume mounts here. If the path doesn't exist in the image,
+# Docker creates it owned by root and the spring user can't write avatars.
+# An empty named volume copies this directory's ownership on first mount.
+RUN mkdir -p /data/avatars && chown spring:spring /data/avatars
+
 # Switch to non-root user
 USER spring:spring
 
