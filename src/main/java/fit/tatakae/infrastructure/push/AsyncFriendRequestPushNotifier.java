@@ -27,11 +27,20 @@ public class AsyncFriendRequestPushNotifier implements FriendRequestPushNotifier
 
     @Override
     public void notifyAddressee(String addresseeId, String requesterUsername) {
+        run("Friend request", () -> delivery.deliver(addresseeId, requesterUsername));
+    }
+
+    @Override
+    public void notifyRequesterOfAcceptance(String requesterId, String accepterUsername) {
+        run("Friend accepted", () -> delivery.deliverAccepted(requesterId, accepterUsername));
+    }
+
+    private void run(String label, Runnable push) {
         executor.execute(() -> {
             try {
-                delivery.deliver(addresseeId, requesterUsername);
+                push.run();
             } catch (RuntimeException exception) {
-                log.warn("Friend request push was not sent: {}", exception.toString());
+                log.warn("{} push was not sent: {}", label, exception.toString());
             }
         });
     }

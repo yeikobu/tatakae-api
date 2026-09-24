@@ -20,8 +20,16 @@ public final class RankingPushPayload {
     }
 
     public static String friendRequestJson(String requesterUsername) {
-        return "{\"aps\":{\"alert\":{\"loc-key\":\"%@ sent you a friend request.\",\"loc-args\":["
-                + jsonString(requesterUsername) + "]},\"sound\":\"default\"},\"type\":\"friend_request\"}";
+        return withUsername("%@ sent you a friend request.", requesterUsername, "friend_request");
+    }
+
+    public static String friendRequestAcceptedJson(String accepterUsername) {
+        return withUsername("%@ accepted your friend request.", accepterUsername, "friend_accepted");
+    }
+
+    private static String withUsername(String locKey, String username, String type) {
+        return "{\"aps\":{\"alert\":{\"loc-key\":\"" + locKey + "\",\"loc-args\":["
+                + jsonString(username) + "]},\"sound\":\"default\"},\"type\":\"" + type + "\"}";
     }
 
     private static String alert(String locKey, String extra) {

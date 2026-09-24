@@ -1,6 +1,7 @@
 package fit.tatakae.application.usecase;
 
 import fit.tatakae.application.event.FriendRequestAcceptedEvent;
+import fit.tatakae.application.port.FriendRequestPushNotifier;
 import fit.tatakae.application.port.UserEventPublisher;
 import fit.tatakae.domain.entity.Friendship;
 import fit.tatakae.domain.entity.User;
@@ -12,13 +13,16 @@ public class RespondFriendRequestUseCase {
     private final FriendshipRepository friendshipRepository;
     private final UserRepository userRepository;
     private final UserEventPublisher userEventPublisher;
+    private final FriendRequestPushNotifier friendRequestPushNotifier;
 
     public RespondFriendRequestUseCase(FriendshipRepository friendshipRepository,
                                        UserRepository userRepository,
-                                       UserEventPublisher userEventPublisher) {
+                                       UserEventPublisher userEventPublisher,
+                                       FriendRequestPushNotifier friendRequestPushNotifier) {
         this.friendshipRepository = friendshipRepository;
         this.userRepository = userRepository;
         this.userEventPublisher = userEventPublisher;
+        this.friendRequestPushNotifier = friendRequestPushNotifier;
     }
 
     public Friendship accept(String friendshipId) {
@@ -32,6 +36,7 @@ public class RespondFriendRequestUseCase {
         userEventPublisher.publishFriendRequestAccepted(
                 saved.getRequesterId(),
                 new FriendRequestAcceptedEvent(saved, acceptedBy));
+        friendRequestPushNotifier.notifyRequesterOfAcceptance(saved.getRequesterId(), acceptedBy.getUsername());
 
         return saved;
     }

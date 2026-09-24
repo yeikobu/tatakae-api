@@ -89,8 +89,10 @@ public class BeanConfiguration {
     @Bean
     public RespondFriendRequestUseCase respondFriendRequestUseCase(FriendshipRepository friendshipRepository,
                                                                    UserRepository userRepository,
-                                                                   UserEventPublisher userEventPublisher) {
-        return new RespondFriendRequestUseCase(friendshipRepository, userRepository, userEventPublisher);
+                                                                   UserEventPublisher userEventPublisher,
+                                                                   FriendRequestPushNotifier friendRequestPushNotifier) {
+        return new RespondFriendRequestUseCase(friendshipRepository, userRepository, userEventPublisher,
+                friendRequestPushNotifier);
     }
 
     @Bean

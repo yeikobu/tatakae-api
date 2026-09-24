@@ -2,6 +2,7 @@ package fit.tatakae.application.usecase;
 
 import fit.tatakae.TestUsers;
 import fit.tatakae.application.event.FriendRequestAcceptedEvent;
+import fit.tatakae.application.port.FriendRequestPushNotifier;
 import fit.tatakae.application.port.UserEventPublisher;
 import fit.tatakae.domain.entity.Friendship;
 import fit.tatakae.domain.entity.FriendshipStatus;
@@ -41,6 +42,9 @@ public class RespondFriendRequestUseCaseTest {
     @Mock
     private UserEventPublisher userEventPublisher;
 
+    @Mock
+    private FriendRequestPushNotifier friendRequestPushNotifier;
+
     @InjectMocks
     private RespondFriendRequestUseCase useCase;
 
@@ -64,6 +68,7 @@ public class RespondFriendRequestUseCaseTest {
         verify(userEventPublisher).publishFriendRequestAccepted(eq(TestUsers.idOf("user_1")), eventCaptor.capture());
         assertEquals(addressee, eventCaptor.getValue().acceptedBy());
         assertEquals(FriendshipStatus.ACCEPTED, eventCaptor.getValue().friendship().getStatus());
+        verify(friendRequestPushNotifier).notifyRequesterOfAcceptance(TestUsers.idOf("user_1"), addressee.getUsername());
     }
 
     @Test
@@ -80,6 +85,7 @@ public class RespondFriendRequestUseCaseTest {
         assertEquals(FriendshipStatus.REJECTED, friendship.getStatus());
         verify(friendshipRepository, times(1)).save(pending);
         verify(userEventPublisher, never()).publishFriendRequestAccepted(any(), any());
+        verify(friendRequestPushNotifier, never()).notifyRequesterOfAcceptance(any(), any());
     }
 
     @Test
@@ -114,5 +120,6 @@ public class RespondFriendRequestUseCaseTest {
         // Act and Assert
         assertThrows(ResourceNotFoundException.class, () -> useCase.accept(pending.getId()));
         verify(userEventPublisher, never()).publishFriendRequestAccepted(any(), any());
+        verify(friendRequestPushNotifier, never()).notifyRequesterOfAcceptance(any(), any());
     }
 }

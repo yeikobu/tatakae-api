@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.function.Function;
 
 @Component
 public class FriendRequestPushDelivery {
@@ -26,14 +27,23 @@ public class FriendRequestPushDelivery {
 
     @Transactional
     public void deliver(String addresseeId, String requesterUsername) {
-        List<DeviceToken> tokens = deviceTokens.findByUserId(addresseeId);
+        deliverTo(addresseeId, "Friend request", device -> apnsSender.sendFriendRequest(device, requesterUsername));
+    }
+
+    @Transactional
+    public void deliverAccepted(String requesterId, String accepterUsername) {
+        deliverTo(requesterId, "Friend accepted", device -> apnsSender.sendFriendRequestAccepted(device, accepterUsername));
+    }
+
+    private void deliverTo(String userId, String label, Function<DeviceToken, ApnsSendResult> send) {
+        List<DeviceToken> tokens = deviceTokens.findByUserId(userId);
         if (tokens.isEmpty()) {
-            log.info("Friend request push skipped for {}: no device token", addresseeId);
+            log.info("{} push skipped for {}: no device token", label, userId);
             return;
         }
         for (DeviceToken device : tokens) {
-            ApnsSendResult result = apnsSender.sendFriendRequest(device, requesterUsername);
-            log.info("Friend request push for {} {} -> {}", addresseeId, device.sandbox() ? "sandbox" : "production", result);
+            ApnsSendResult result = send.apply(device);
+            log.info("{} push for {} {} -> {}", label, userId, device.sandbox() ? "sandbox" : "production", result);
             if (result == ApnsSendResult.UNREGISTERED) {
                 deviceTokens.delete(device.token());
             }

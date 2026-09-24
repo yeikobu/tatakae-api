@@ -24,6 +24,9 @@ public class ApnsTokenTest {
         assertTrue(RankingPushPayload.json(RankingBoard.GLOBAL).contains("\"type\":\"ranking\""));
         assertTrue(RankingPushPayload.friendRequestJson("Juan").contains("\"loc-args\":[\"Juan\"]"));
         assertTrue(RankingPushPayload.friendRequestJson("Juan").contains("%@ sent you a friend request."));
+        assertTrue(RankingPushPayload.friendRequestAcceptedJson("Juan").contains("\"loc-args\":[\"Juan\"]"));
+        assertTrue(RankingPushPayload.friendRequestAcceptedJson("Juan").contains("%@ accepted your friend request."));
+        assertTrue(RankingPushPayload.friendRequestAcceptedJson("Juan").contains("\"type\":\"friend_accepted\""));
     }
 
     @Test

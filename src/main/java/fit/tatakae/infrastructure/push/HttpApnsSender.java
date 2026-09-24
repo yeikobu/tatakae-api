@@ -80,9 +80,18 @@ public class HttpApnsSender implements ApnsSender {
 
     @Override
     public ApnsSendResult sendFriendRequest(DeviceToken device, String requesterUsername) {
+        return sendAlert(device, RankingPushPayload.friendRequestJson(requesterUsername), "friend_request");
+    }
+
+    @Override
+    public ApnsSendResult sendFriendRequestAccepted(DeviceToken device, String accepterUsername) {
+        return sendAlert(device, RankingPushPayload.friendRequestAcceptedJson(accepterUsername), "friend_accepted");
+    }
+
+    private ApnsSendResult sendAlert(DeviceToken device, String payload, String label) {
         ApnsJwtFactory jwtFactory = device.sandbox() ? sandboxJwt : productionJwt;
         if (jwtFactory == null) {
-            log.warn("Friend request push skipped: no {} APNs key", device.sandbox() ? "sandbox" : "production");
+            log.warn("Push {} skipped: no {} APNs key", label, device.sandbox() ? "sandbox" : "production");
             return ApnsSendResult.DISABLED;
         }
         String host = device.sandbox() ? "api.sandbox.push.apple.com" : "api.push.apple.com";
@@ -93,9 +102,9 @@ public class HttpApnsSender implements ApnsSender {
                 .header("apns-topic", properties.bundleIdFor(device.sandbox()))
                 .header("apns-push-type", "alert")
                 .header("apns-priority", "10")
-                .POST(HttpRequest.BodyPublishers.ofString(RankingPushPayload.friendRequestJson(requesterUsername)))
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
                 .build();
-        return dispatch(request, "friend_request");
+        return dispatch(request, label);
     }
 
     private ApnsSendResult dispatch(HttpRequest request, String label) {

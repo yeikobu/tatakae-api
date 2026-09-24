@@ -9,4 +9,8 @@ public interface ApnsSender {
     default ApnsSendResult sendFriendRequest(DeviceToken device, String requesterUsername) {
         return ApnsSendResult.DISABLED;
     }
+
+    default ApnsSendResult sendFriendRequestAccepted(DeviceToken device, String accepterUsername) {
+        return ApnsSendResult.DISABLED;
+    }
 }
