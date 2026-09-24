@@ -64,6 +64,24 @@ public class UpdateUserUseCaseTest {
         verify(userRepository, never()).save(any(User.class));
     }
 
+    // Sign in with Apple registers the athlete as UNSPECIFIED; rejecting this write left every new account stuck.
+    @Test
+    public void shouldAcceptTheFirstGenderChoiceOfANewAthlete() {
+        // Arrange
+        User stored = TestUsers.user("athlete_001590", "unknown", PrivacyLevel.PUBLIC, Gender.UNSPECIFIED);
+        String identity = stored.getUserId();
+        when(userRepository.findById(identity)).thenReturn(Optional.of(stored));
+        when(userRepository.findByUsername("kenshin")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        User updated = useCase.execute(identity, "kenshin", "unknown", PrivacyLevel.PUBLIC, Gender.FEMALE);
+
+        // Assert
+        assertEquals("kenshin", updated.getUsername());
+        assertEquals(Gender.FEMALE, updated.getGender());
+    }
+
     @Test
     public void shouldPreserveCasingWhenTheAthleteRetypesTheirHandle() {
         // Arrange

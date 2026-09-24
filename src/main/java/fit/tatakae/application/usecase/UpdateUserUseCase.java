@@ -18,7 +18,8 @@ public class UpdateUserUseCase {
     }
 
     // Renaming is allowed precisely because the identity is a UUID: friendships and sessions keep pointing here.
-    // Gender is set once at registration (post-Apple nickname form) and cannot change afterwards.
+    // Gender is chosen once in the post-Apple nickname form and cannot change afterwards.
+    // Sign in with Apple stores UNSPECIFIED, so that first choice is the one write that must go through.
     public User execute(String userId, String username, String country, PrivacyLevel privacyLevel, Gender gender) {
         String identity = UserId.of(userId).asString();
         String handle = Username.normalize(username);
@@ -26,9 +27,11 @@ public class UpdateUserUseCase {
         User stored = userRepository.findById(identity)
                 .orElseThrow(() -> new ResourceNotFoundException("User " + identity + " was not found"));
 
-        if (gender != null && gender != stored.getGender()) {
+        boolean choosingForTheFirstTime = stored.getGender() == Gender.UNSPECIFIED;
+        if (gender != null && gender != stored.getGender() && !choosingForTheFirstTime) {
             throw new InvalidUserException("gender cannot be changed after registration");
         }
+        Gender resolvedGender = choosingForTheFirstTime && gender != null ? gender : stored.getGender();
 
         boolean handleBelongsToAnotherAthlete = userRepository.findByUsername(handle)
                 .filter(owner -> !owner.equals(stored))
@@ -37,6 +40,6 @@ public class UpdateUserUseCase {
             throw new DuplicateUserException("Username " + handle + " is already taken");
         }
 
-        return userRepository.save(stored.updatedTo(handle, country, privacyLevel, stored.getGender()));
+        return userRepository.save(stored.updatedTo(handle, country, privacyLevel, resolvedGender));
     }
 }
