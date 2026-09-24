@@ -55,6 +55,10 @@ services:
       APNS_SANDBOX_PRIVATE_KEY_PATH: ${APNS_SANDBOX_PRIVATE_KEY_PATH:-}
       APNS_BUNDLE_ID: ${APNS_BUNDLE_ID:-com.aguilarjacob.tatakae}
       APNS_SANDBOX_BUNDLE_ID: ${APNS_SANDBOX_BUNDLE_ID:-com.aguilarjacob.tatakae.dev}
+      # Session JWTs (access HS256 + opaque refresh)
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TTL_SECONDS: ${JWT_ACCESS_TTL_SECONDS:-900}
+      JWT_REFRESH_TTL_SECONDS: ${JWT_REFRESH_TTL_SECONDS:-5184000}
     depends_on:
       db:
         condition: service_healthy
