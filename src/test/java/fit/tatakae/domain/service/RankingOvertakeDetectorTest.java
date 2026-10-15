@@ -147,19 +147,29 @@ public class RankingOvertakeDetectorTest {
     }
 
     @Test
-    public void shouldNotTreatUnknownCountryAsALocalBoard() {
+    public void shouldNotReportPublicBoardsForAthletesWithoutCountry() {
         User scorer = TestUsers.user("scorer", "unknown", PrivacyLevel.PUBLIC);
         User rival = TestUsers.user("rival", "unknown", PrivacyLevel.PUBLIC);
 
         List<RankingOvertake> overtakes = RankingOvertakeDetector.detect(
                 mark(scorer, 20, NOW),
                 List.of(mark(rival, 10, EARLIER)),
+                Set.of(rival.getUserId()));
+
+        assertEquals(List.of(new RankingOvertake(rival.getUserId(), RankingBoard.FRIENDS)), overtakes);
+    }
+
+    @Test
+    public void shouldNotReportGlobalWhenOnlyTheRivalLacksACountry() {
+        User scorer = TestUsers.user("scorer", "CL", PrivacyLevel.PUBLIC);
+        User rival = TestUsers.user("rival", "  ", PrivacyLevel.PUBLIC);
+
+        List<RankingOvertake> overtakes = RankingOvertakeDetector.detect(
+                mark(scorer, 20, NOW),
+                List.of(mark(rival, 10, EARLIER)),
                 Set.of());
 
-        assertEquals(List.of(new RankingOvertake(rival.getUserId(), RankingBoard.GLOBAL)), overtakes);
-        assertFalse(RankingOvertakeDetector.isRankedCountry(null));
-        assertFalse(RankingOvertakeDetector.isRankedCountry("  "));
-        assertFalse(RankingOvertakeDetector.isRankedCountry("n/a"));
+        assertTrue(overtakes.isEmpty());
     }
 
     @Test
@@ -221,7 +231,7 @@ public class RankingOvertakeDetectorTest {
     }
 
     @Test
-    public void shouldNotBuildALocalBoardWhenTheCountryIsMissing() {
+    public void shouldNotReportPublicBoardsWhenTheCountryIsMissing() {
         User scorer = new User(TestUsers.idOf("scorer2"), "scorer2", null, PrivacyLevel.PUBLIC, Gender.MALE);
         User rival = new User(TestUsers.idOf("rival2"), "rival2", null, PrivacyLevel.PUBLIC, Gender.MALE);
 
@@ -230,6 +240,6 @@ public class RankingOvertakeDetectorTest {
                 List.of(mark(rival, 10, EARLIER)),
                 Set.of());
 
-        assertEquals(List.of(new RankingOvertake(rival.getUserId(), RankingBoard.GLOBAL)), overtakes);
+        assertTrue(overtakes.isEmpty());
     }
 }

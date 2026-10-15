@@ -64,6 +64,54 @@ public class LeaderboardServiceTest {
     }
 
     @Test
+    public void shouldLeaveAthletesWithoutCountryOutOfGlobalAndCountry() {
+        //Arrange
+        User ranked = TestUsers.user("ranked", "CL", PrivacyLevel.PUBLIC);
+        User placeholder = TestUsers.user("placeholder", "unknown", PrivacyLevel.PUBLIC);
+        User blank = TestUsers.user("blank", " ", PrivacyLevel.PUBLIC);
+
+        Exercise exercise = Exercise.PULL_UP;
+        Instant start = Instant.parse("2026-07-22T10:00:00Z");
+        Clock clock = Clock.fixed(start, ZoneOffset.UTC);
+
+        TrainingSession rankedSession = new TrainingSession(ranked, exercise, 10, start, start.plusSeconds(60), clock);
+        TrainingSession placeholderSession = new TrainingSession(placeholder, exercise, 30, start, start.plusSeconds(60), clock);
+        TrainingSession blankSession = new TrainingSession(blank, exercise, 40, start, start.plusSeconds(60), clock);
+
+        when(sessionRepository.getAll()).thenReturn(List.of(rankedSession, placeholderSession, blankSession));
+
+        //Act
+        List<TrainingSession> global = leaderboardService.getGlobalRanking(exercise);
+        List<TrainingSession> unknownBoard = leaderboardService.getLocalRanking(exercise, "unknown");
+
+        //Assert
+        assertEquals(List.of(rankedSession), global);
+        assertEquals(List.of(), unknownBoard);
+    }
+
+    @Test
+    public void shouldKeepAthletesWithoutCountryInTheFriendsRanking() {
+        //Arrange
+        User me = TestUsers.user("me", "unknown", PrivacyLevel.PUBLIC);
+        User friend = TestUsers.user("friend", "CL", PrivacyLevel.PRIVATE);
+
+        Exercise exercise = Exercise.PULL_UP;
+        Instant start = Instant.parse("2026-07-22T10:00:00Z");
+        Clock clock = Clock.fixed(start, ZoneOffset.UTC);
+
+        TrainingSession mine = new TrainingSession(me, exercise, 12, start, start.plusSeconds(60), clock);
+        TrainingSession theirs = new TrainingSession(friend, exercise, 8, start, start.plusSeconds(60), clock);
+
+        when(sessionRepository.getAll()).thenReturn(List.of(mine, theirs));
+
+        //Act
+        List<TrainingSession> friends = leaderboardService.getFriendsRanking(exercise, me.getUserId(), Set.of(friend.getUserId()));
+
+        //Assert
+        assertEquals(List.of(mine, theirs), friends);
+    }
+
+    @Test
     public void shouldReturnLocalRanking() {
         //Arrange
         User user1 = TestUsers.user("user_1", "cl", PrivacyLevel.PUBLIC);

@@ -7,7 +7,6 @@ import fit.tatakae.domain.entity.User;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -40,9 +39,9 @@ public final class RankingOvertakeDetector {
             if (rival.getUser().getUserId().equals(scorerId) || !justPassed(previous, fresh, rival)) {
                 continue;
             }
-            if (bothPublic(fresh, rival)) {
+            if (bothInPublicRankings(fresh, rival)) {
                 overtakes.add(new RankingOvertake(rival.getUser().getUserId(), RankingBoard.GLOBAL));
-                if (sameRankedCountry(fresh.getUser(), rival.getUser())) {
+                if (fresh.getUser().isFromCountry(rival.getUser().getCountry())) {
                     overtakes.add(new RankingOvertake(rival.getUser().getUserId(), RankingBoard.COUNTRY));
                 }
             }
@@ -51,21 +50,6 @@ public final class RankingOvertakeDetector {
             }
         }
         return List.copyOf(overtakes);
-    }
-
-    // A missing or placeholder country is not a local board. The app refuses to ask for one.
-    static boolean isRankedCountry(String country) {
-        if (country == null) {
-            return false;
-        }
-        String trimmed = country.trim();
-        if (trimmed.isEmpty()) {
-            return false;
-        }
-        return switch (trimmed.toLowerCase(Locale.ROOT)) {
-            case "unknown", "null", "n/a" -> false;
-            default -> true;
-        };
     }
 
     private static boolean justPassed(TrainingSession previous, TrainingSession fresh, TrainingSession rival) {
@@ -79,14 +63,8 @@ public final class RankingOvertakeDetector {
         return first.outperforms(second) ? first : second;
     }
 
-    private static boolean bothPublic(TrainingSession fresh, TrainingSession rival) {
-        return fresh.getUser().isPublic() && rival.getUser().isPublic();
-    }
-
-    private static boolean sameRankedCountry(User scorer, User rival) {
-        if (!isRankedCountry(scorer.getCountry()) || !isRankedCountry(rival.getCountry())) {
-            return false;
-        }
-        return scorer.isFromCountry(rival.getCountry());
+    // Same rule as the boards: whoever is not on Global or Country cannot be passed there.
+    private static boolean bothInPublicRankings(TrainingSession fresh, TrainingSession rival) {
+        return fresh.getUser().isInPublicRankings() && rival.getUser().isInPublicRankings();
     }
 }

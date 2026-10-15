@@ -32,7 +32,7 @@ public class LeaderboardService {
     public List<TrainingSession> getGlobalRanking(Exercise exercise, Gender gender) {
         return rank(
                 sessionRepository.getAll().stream()
-                        .filter(session -> session.getUser().isPublic())
+                        .filter(session -> session.getUser().isInPublicRankings())
                         .filter(session -> session.isForExercise(exercise))
                         .filter(session -> matchesGender(session, gender))
         );
@@ -45,7 +45,7 @@ public class LeaderboardService {
     public List<TrainingSession> getLocalRanking(Exercise exercise, String country, Gender gender) {
         return rank(
                 sessionRepository.getAll().stream()
-                        .filter(session -> session.getUser().isPublic())
+                        .filter(session -> session.getUser().isInPublicRankings())
                         .filter(session -> session.isForExercise(exercise))
                         .filter(session -> session.getUser().isFromCountry(country))
                         .filter(session -> matchesGender(session, gender))
