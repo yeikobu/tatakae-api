@@ -3,6 +3,8 @@ package fit.tatakae.domain.entity;
 import fit.tatakae.domain.valueobject.UserId;
 import fit.tatakae.domain.valueobject.Username;
 
+import java.util.Locale;
+
 public class User {
     private final UserId userId;
     private final Username username;
@@ -86,6 +88,26 @@ public class User {
 
     public boolean isFromCountry(String otherCountry) {
         return this.country.equals(otherCountry);
+    }
+
+    // Sign in with Apple creates the athlete before the app asks for a country, so the placeholder is real data.
+    public boolean hasRankedCountry() {
+        if (this.country == null) {
+            return false;
+        }
+        String trimmed = this.country.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+        return switch (trimmed.toLowerCase(Locale.ROOT)) {
+            case "unknown", "null", "n/a" -> false;
+            default -> true;
+        };
+    }
+
+    // Global and country boards need both: privacy says the athlete wants to be seen, the country says where.
+    public boolean isInPublicRankings() {
+        return isPublic() && hasRankedCountry();
     }
 
     public boolean hasGender(Gender otherGender) {

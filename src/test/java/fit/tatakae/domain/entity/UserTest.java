@@ -127,6 +127,31 @@ public class UserTest {
         assertFalse(user.isPublic());
     }
 
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"  ", "unknown", "UNKNOWN", "null", "n/a"})
+    public void shouldNotCountAPlaceholderAsARankedCountry(String country) {
+        User user = new User(IDENTITY, "yeikobu", country, PrivacyLevel.PUBLIC, Gender.MALE);
+
+        assertFalse(user.hasRankedCountry());
+        assertFalse(user.isInPublicRankings());
+    }
+
+    @Test
+    public void shouldBeInPublicRankingsWhenPublicAndWithCountry() {
+        User user = new User(IDENTITY, "yeikobu", "CL", PrivacyLevel.PUBLIC, Gender.MALE);
+
+        assertTrue(user.hasRankedCountry());
+        assertTrue(user.isInPublicRankings());
+    }
+
+    @Test
+    public void shouldStayOutOfPublicRankingsWhenPrivateEvenWithCountry() {
+        User user = new User(IDENTITY, "yeikobu", "CL", PrivacyLevel.PRIVATE, Gender.MALE);
+
+        assertFalse(user.isInPublicRankings());
+    }
+
     @Test
     public void shouldConfirmWhenUserIsFromTheGivenCountry() {
         // Arrange
