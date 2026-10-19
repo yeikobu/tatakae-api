@@ -15,7 +15,11 @@ public enum Exercise {
     CHIN_UP(82),
     AUSTRALIAN_PULL_UP(96),
     BURPEES(50),
-    CRUNCH(120);
+    CRUNCH(120),
+    // Each variant ranks apart: knee or decline reps never count on the PUSH_UP board.
+    // KNEE_PUSH_UP takes the incline ceiling, the other easier push-up.
+    KNEE_PUSH_UP(112),
+    DECLINE_PUSH_UP(70);
 
     private final int maxRepsPerMinute;
 

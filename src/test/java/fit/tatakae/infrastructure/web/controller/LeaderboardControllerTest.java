@@ -16,6 +16,8 @@ import fit.tatakae.infrastructure.web.security.AuthenticatedUser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -144,6 +146,21 @@ public class LeaderboardControllerTest {
         mockMvc.perform(get("/api/v1/leaderboards/BURPEES").param("scope", "FRIENDS"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].userId").value(TestUsers.idOf("first")));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Exercise.class, names = {"KNEE_PUSH_UP", "DECLINE_PUSH_UP"})
+    public void shouldReturnTheFriendsRankingForAPushUpVariant(Exercise exercise) throws Exception {
+        // Arrange
+        authenticateAs(TestUsers.idOf("first"));
+        when(getLeaderboardUseCase.executeByFriends(exercise, TestUsers.idOf("first"), null))
+                .thenReturn(List.of(sessionOf("first", 25, exercise)));
+
+        // Act and Assert
+        mockMvc.perform(get("/api/v1/leaderboards/" + exercise.name()).param("scope", "FRIENDS"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].userId").value(TestUsers.idOf("first")))
+                .andExpect(jsonPath("$[0].reps").value(25));
     }
 
     @Test

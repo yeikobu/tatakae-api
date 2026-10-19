@@ -442,11 +442,15 @@ or an uptime monitor. Component details are shown under `dev` and hidden everywh
 `Exercise` lists the rep exercises the iOS camera already counts. The same names are accepted by
 `POST /training-sessions`, by `GET /leaderboards/{exercise}`, and by the `exercise` field of an
 SSE `leaderboard_update`. Chin-up is its own value, `CHIN_UP`, and is not stored as `PULL_UP`.
+The same goes for the push-up variants: knee, incline and decline reps each have their own board
+and never count on `PUSH_UP`.
 
 | Value | Ceiling (reps) |
 |---|---|
 | `PUSH_UP` | 84 |
 | `INCLINE_PUSH_UP` | 112 |
+| `KNEE_PUSH_UP` | 112 |
+| `DECLINE_PUSH_UP` | 70 |
 | `PIKE_PUSH_UP` | 45 |
 | `DECLINED_PIKE_PUSH_UP` | 32 |
 | `PULL_UP` | 77 |
