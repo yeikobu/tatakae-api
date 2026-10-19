@@ -23,7 +23,7 @@ Real-time push for friend requests and leaderboard score updates.
 | `friend_request_accepted` | Your outgoing request was accepted | `{ "id", "requesterId", "addresseeId", "acceptedBy": UserResponse, "respondedAt" }` |
 | `leaderboard_update` | A training session is recorded | `{ "exercise", "scope": "GLOBAL"\|"FRIENDS", "userId", "username", "reps", "country" }` |
 
-`exercise` is the counted-rep enum, the same names as `GET /api/v1/leaderboards/{exercise}`: `PUSH_UP`, `INCLINE_PUSH_UP`, `PIKE_PUSH_UP`, `DECLINED_PIKE_PUSH_UP`, `PULL_UP`, `CHIN_UP`, `AUSTRALIAN_PULL_UP`, `DIP`, `SQUAT`, `BURPEES`, `CRUNCH`. Ceilings and the names the API rejects (`PLANK`, `HANDSTAND_PUSH_UP`, `MUSCLE_UP`) are in the README section "Counted exercises".
+`exercise` is the counted-rep enum, the same names as `GET /api/v1/leaderboards/{exercise}`: `PUSH_UP`, `INCLINE_PUSH_UP`, `KNEE_PUSH_UP`, `DECLINE_PUSH_UP`, `PIKE_PUSH_UP`, `DECLINED_PIKE_PUSH_UP`, `PULL_UP`, `CHIN_UP`, `AUSTRALIAN_PULL_UP`, `DIP`, `SQUAT`, `BURPEES`, `CRUNCH`. Ceilings and the names the API rejects (`PLANK`, `HANDSTAND_PUSH_UP`, `MUSCLE_UP`) are in the README section "Counted exercises".
 
 ### Leaderboard MVP fan-out
 

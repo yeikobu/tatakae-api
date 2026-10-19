@@ -21,6 +21,8 @@ import fit.tatakae.infrastructure.web.security.AuthenticatedUser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -174,6 +176,29 @@ public class TrainingSessionControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.reps").value(20));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Exercise.class, names = {"KNEE_PUSH_UP", "DECLINE_PUSH_UP"})
+    public void shouldRecordASessionForAPushUpVariant(Exercise exercise) throws Exception {
+        // Arrange
+        authenticateAs("user_1");
+        User user = TestUsers.user("yeikobu", "cl", PrivacyLevel.PUBLIC);
+        TrainingSession session = new TrainingSession(user, exercise, 18, START, END, CLOCK);
+        when(getUserUseCase.execute("user_1")).thenReturn(user);
+        when(recordTrainingSessionUseCase.execute(eq(user), eq(exercise), eq(18), eq(START), eq(END), any()))
+                .thenReturn(session);
+        String body = """
+                {"userId":"user_1","exercise":"%s","reps":18,\
+                "start":"%s","end":"%s"}
+                """.formatted(exercise.name(), START, END);
+
+        // Act and Assert
+        mockMvc.perform(post("/api/v1/training-sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.reps").value(18));
     }
 
     @Test

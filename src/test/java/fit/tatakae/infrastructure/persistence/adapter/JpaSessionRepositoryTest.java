@@ -4,6 +4,8 @@ import fit.tatakae.TestUsers;
 import fit.tatakae.domain.entity.*;
 import fit.tatakae.domain.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -67,6 +69,52 @@ public class JpaSessionRepositoryTest extends PostgresIntegrationTest {
                 .orElseThrow();
         assertEquals(Exercise.BURPEES, persisted.getExercise());
         assertEquals(12, persisted.getReps());
+    }
+
+    // The CHECK on training_sessions lists every value by hand, so each new one needs a migration.
+    @ParameterizedTest
+    @EnumSource(value = Exercise.class, names = {"KNEE_PUSH_UP", "DECLINE_PUSH_UP"})
+    public void shouldStoreASessionOfAPushUpVariant(Exercise exercise) {
+        // Arrange
+        User user = TestUsers.user("athlete_" + exercise.name().toLowerCase(), "cl", PrivacyLevel.PUBLIC);
+        userRepository.save(user);
+        TrainingSession session =
+                new TrainingSession(user, exercise, 15, NOW, NOW.plusSeconds(60), CLOCK);
+
+        // Act
+        sessionRepository.save(session);
+        List<TrainingSession> stored = sessionRepository.findByExercise(exercise);
+
+        // Assert
+        TrainingSession persisted = stored.stream()
+                .filter(candidate -> candidate.getId().equals(session.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(exercise, persisted.getExercise());
+        assertEquals(15, persisted.getReps());
+    }
+
+    @Test
+    public void shouldKeepPushUpVariantsOffThePushUpBoard() {
+        // Arrange
+        User user = TestUsers.user("trunks", "cl", PrivacyLevel.PUBLIC);
+        userRepository.save(user);
+        TrainingSession pushUp = new TrainingSession(user, Exercise.PUSH_UP, 10, NOW, NOW.plusSeconds(60), CLOCK);
+        TrainingSession knee = new TrainingSession(user, Exercise.KNEE_PUSH_UP, 40, NOW, NOW.plusSeconds(60), CLOCK);
+        TrainingSession decline = new TrainingSession(user, Exercise.DECLINE_PUSH_UP, 20, NOW, NOW.plusSeconds(60), CLOCK);
+        sessionRepository.save(pushUp);
+        sessionRepository.save(knee);
+        sessionRepository.save(decline);
+
+        // Act
+        List<String> board = sessionRepository.findByExercise(Exercise.PUSH_UP).stream()
+                .map(TrainingSession::getId)
+                .toList();
+
+        // Assert
+        assertTrue(board.contains(pushUp.getId()));
+        assertFalse(board.contains(knee.getId()));
+        assertFalse(board.contains(decline.getId()));
     }
 
     @Test

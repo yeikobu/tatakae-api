@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class ExerciseTest {
@@ -16,7 +17,9 @@ public class ExerciseTest {
             "CHIN_UP, 82",
             "AUSTRALIAN_PULL_UP, 96",
             "BURPEES, 50",
-            "CRUNCH, 120"
+            "CRUNCH, 120",
+            "KNEE_PUSH_UP, 112",
+            "DECLINE_PUSH_UP, 70"
     })
     public void shouldCapEachNewlyCountedExercise(String name, int cap) {
         // Act
@@ -38,5 +41,13 @@ public class ExerciseTest {
         // Assert
         assertEquals(82, Exercise.CHIN_UP.getExerciseMaxRepsAllowedPerMinute());
         assertEquals(77, Exercise.PULL_UP.getExerciseMaxRepsAllowedPerMinute());
+    }
+
+    @Test
+    public void shouldKeepEachPushUpVariantApartFromThePushUp() {
+        // Assert
+        assertNotEquals(Exercise.PUSH_UP, Exercise.valueOf("KNEE_PUSH_UP"));
+        assertNotEquals(Exercise.PUSH_UP, Exercise.valueOf("DECLINE_PUSH_UP"));
+        assertNotEquals(Exercise.DECLINED_PIKE_PUSH_UP, Exercise.valueOf("DECLINE_PUSH_UP"));
     }
 }
